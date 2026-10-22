@@ -25,6 +25,7 @@ af/build_af_xml.py            builds the AF XML import files from model.json
 af/CordilleraPetroleo.xml     full import (templates, elements, analyses, notification rules)
 af/CordilleraPetroleo_NoAnalytics.xml   fallback import without analyses/notifications
 sim/                          simulator + PI Web API writer
+dashboard/                    management dashboard (map → site drill-down), reads AF via PI Web API
 docs/                         model review page
 ```
 
@@ -144,3 +145,9 @@ Coupled chains you can use for forecasting:
 
 Units missing from the default AF UOM database (Mscf/d, lb/h, spm, °API, mil, PTB) are
 kept in the PI point `engunits` and the attribute description, not as AF UOMs.
+
+## Management dashboard
+
+`dashboard/` is a map-based overview of all sites with drill-down to each wellfield and refinery.
+It reads AF through PI Web API and falls back to bundled demo data when PI Web API can't be reached.
+Setup (hosting, CORS, authentication): `dashboard/README.md`.

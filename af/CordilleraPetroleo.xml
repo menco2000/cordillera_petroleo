@@ -5099,7 +5099,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
         </AFAttribute>
         <AFAttribute>
           <Name>Refinery Nameplate Capacity</Name>
-          <Value type="Double">2750.0</Value>
+          <Value type="Double">2300.0</Value>
         </AFAttribute>
         <AFAttribute>
           <Name>Field Oil Rate</Name>
@@ -7131,7 +7131,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">3000.0</Value>
+              <Value type="Double">2500.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -7246,7 +7246,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">3500.0</Value>
+                <Value type="Double">3000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Head</Name>
@@ -7615,7 +7615,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">2750.0</Value>
+              <Value type="Double">2300.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -7662,7 +7662,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">3500.0</Value>
+                <Value type="Double">3000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Head</Name>
@@ -7797,7 +7797,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Duty</Name>
-                <Value type="Double">5.5</Value>
+                <Value type="Double">4.6</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Tube Metal Temperature</Name>
@@ -7960,7 +7960,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">2000.0</Value>
+              <Value type="Double">1500.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -8007,7 +8007,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Duty</Name>
-                <Value type="Double">3.0</Value>
+                <Value type="Double">2.5</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Tube Metal Temperature</Name>
@@ -8263,7 +8263,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">1500.0</Value>
+              <Value type="Double">1000.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -8378,7 +8378,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">1672.0</Value>
+                <Value type="Double">1398.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Run Status</Name>
@@ -8541,7 +8541,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Total Capacity</Name>
-              <Value type="Double">16000.0</Value>
+              <Value type="Double">13000.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Total Inventory</Name>
@@ -8582,7 +8582,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Nominal Capacity</Name>
-                <Value type="Double">4000.0</Value>
+                <Value type="Double">3000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Fill Height</Name>
@@ -8590,7 +8590,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Diameter</Name>
-                <Value type="Double">24.4</Value>
+                <Value type="Double">21.1</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Level</Name>
@@ -8652,7 +8652,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Nominal Capacity</Name>
-                <Value type="Double">3000.0</Value>
+                <Value type="Double">2000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Fill Height</Name>
@@ -8660,7 +8660,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Diameter</Name>
-                <Value type="Double">21.1</Value>
+                <Value type="Double">17.3</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Level</Name>
@@ -8792,7 +8792,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Nominal Capacity</Name>
-                <Value type="Double">4000.0</Value>
+                <Value type="Double">3000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Fill Height</Name>
@@ -8800,7 +8800,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Diameter</Name>
-                <Value type="Double">24.4</Value>
+                <Value type="Double">21.1</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Level</Name>
@@ -8933,7 +8933,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Steam Capacity</Name>
-                <Value type="Double">20000.0</Value>
+                <Value type="Double">15000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Run Status</Name>
@@ -9148,7 +9148,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
         </AFAttribute>
         <AFAttribute>
           <Name>Refinery Nameplate Capacity</Name>
-          <Value type="Double">2750.0</Value>
+          <Value type="Double">2350.0</Value>
         </AFAttribute>
         <AFAttribute>
           <Name>Field Oil Rate</Name>
@@ -11556,7 +11556,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">3000.0</Value>
+              <Value type="Double">2500.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -12040,7 +12040,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">2750.0</Value>
+              <Value type="Double">2350.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -12087,7 +12087,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">3500.0</Value>
+                <Value type="Double">3000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Head</Name>
@@ -12222,7 +12222,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Duty</Name>
-                <Value type="Double">5.5</Value>
+                <Value type="Double">4.7</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Tube Metal Temperature</Name>
@@ -12432,7 +12432,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Duty</Name>
-                <Value type="Double">3.0</Value>
+                <Value type="Double">2.6</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Tube Metal Temperature</Name>
@@ -12688,7 +12688,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">1500.0</Value>
+              <Value type="Double">1000.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -12803,7 +12803,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">1672.0</Value>
+                <Value type="Double">1429.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Run Status</Name>
@@ -12966,7 +12966,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Total Capacity</Name>
-              <Value type="Double">16000.0</Value>
+              <Value type="Double">13000.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Total Inventory</Name>
@@ -13007,7 +13007,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Nominal Capacity</Name>
-                <Value type="Double">4000.0</Value>
+                <Value type="Double">3000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Fill Height</Name>
@@ -13015,7 +13015,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Diameter</Name>
-                <Value type="Double">24.4</Value>
+                <Value type="Double">21.1</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Level</Name>
@@ -13077,7 +13077,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Nominal Capacity</Name>
-                <Value type="Double">3000.0</Value>
+                <Value type="Double">2000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Fill Height</Name>
@@ -13085,7 +13085,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Diameter</Name>
-                <Value type="Double">21.1</Value>
+                <Value type="Double">17.3</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Level</Name>
@@ -13217,7 +13217,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Nominal Capacity</Name>
-                <Value type="Double">4000.0</Value>
+                <Value type="Double">3000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Fill Height</Name>
@@ -13225,7 +13225,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Diameter</Name>
-                <Value type="Double">24.4</Value>
+                <Value type="Double">21.1</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Level</Name>
@@ -13358,7 +13358,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Steam Capacity</Name>
-                <Value type="Double">20000.0</Value>
+                <Value type="Double">15000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Run Status</Name>
@@ -13573,7 +13573,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
         </AFAttribute>
         <AFAttribute>
           <Name>Refinery Nameplate Capacity</Name>
-          <Value type="Double">1250.0</Value>
+          <Value type="Double">1100.0</Value>
         </AFAttribute>
         <AFAttribute>
           <Name>Field Oil Rate</Name>
@@ -16193,7 +16193,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">1250.0</Value>
+              <Value type="Double">1100.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -16375,7 +16375,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Duty</Name>
-                <Value type="Double">2.5</Value>
+                <Value type="Double">2.2</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Tube Metal Temperature</Name>
@@ -16585,7 +16585,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Duty</Name>
-                <Value type="Double">1.4</Value>
+                <Value type="Double">1.2</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Tube Metal Temperature</Name>
@@ -16956,7 +16956,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">760.0</Value>
+                <Value type="Double">669.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Run Status</Name>
@@ -17119,7 +17119,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Total Capacity</Name>
-              <Value type="Double">8000.0</Value>
+              <Value type="Double">7000.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Total Inventory</Name>
@@ -17300,7 +17300,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Nominal Capacity</Name>
-                <Value type="Double">3000.0</Value>
+                <Value type="Double">2000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Fill Height</Name>
@@ -17308,7 +17308,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Diameter</Name>
-                <Value type="Double">21.1</Value>
+                <Value type="Double">17.3</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Level</Name>
@@ -17624,7 +17624,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Circulation</Name>
-                <Value type="Double">1500.0</Value>
+                <Value type="Double">1000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Fan Status</Name>
@@ -17726,7 +17726,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
         </AFAttribute>
         <AFAttribute>
           <Name>Refinery Nameplate Capacity</Name>
-          <Value type="Double">1000.0</Value>
+          <Value type="Double">750.0</Value>
         </AFAttribute>
         <AFAttribute>
           <Name>Field Oil Rate</Name>
@@ -19766,7 +19766,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">1000.0</Value>
+              <Value type="Double">750.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -19813,7 +19813,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">1500.0</Value>
+                <Value type="Double">1000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Head</Name>
@@ -19948,7 +19948,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Duty</Name>
-                <Value type="Double">2.0</Value>
+                <Value type="Double">1.5</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Tube Metal Temperature</Name>
@@ -20111,7 +20111,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">1000.0</Value>
+              <Value type="Double">500.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -20158,7 +20158,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Duty</Name>
-                <Value type="Double">1.1</Value>
+                <Value type="Double">0.8</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Tube Metal Temperature</Name>
@@ -20529,7 +20529,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">608.0</Value>
+                <Value type="Double">456.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Run Status</Name>
@@ -20692,7 +20692,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Total Capacity</Name>
-              <Value type="Double">7000.0</Value>
+              <Value type="Double">5000.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Total Inventory</Name>
@@ -20733,7 +20733,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Nominal Capacity</Name>
-                <Value type="Double">2000.0</Value>
+                <Value type="Double">1000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Fill Height</Name>
@@ -20741,7 +20741,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Diameter</Name>
-                <Value type="Double">17.3</Value>
+                <Value type="Double">12.2</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Level</Name>
@@ -20943,7 +20943,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Nominal Capacity</Name>
-                <Value type="Double">2000.0</Value>
+                <Value type="Double">1000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Fill Height</Name>
@@ -20951,7 +20951,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Diameter</Name>
-                <Value type="Double">17.3</Value>
+                <Value type="Double">12.2</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Level</Name>
@@ -21084,7 +21084,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Steam Capacity</Name>
-                <Value type="Double">10000.0</Value>
+                <Value type="Double">5000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Run Status</Name>
@@ -21299,7 +21299,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
         </AFAttribute>
         <AFAttribute>
           <Name>Refinery Nameplate Capacity</Name>
-          <Value type="Double">500.0</Value>
+          <Value type="Double">350.0</Value>
         </AFAttribute>
         <AFAttribute>
           <Name>Field Oil Rate</Name>
@@ -23101,7 +23101,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">500.0</Value>
+              <Value type="Double">350.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -23148,7 +23148,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">1000.0</Value>
+                <Value type="Double">500.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Head</Name>
@@ -23283,7 +23283,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Duty</Name>
-                <Value type="Double">1.0</Value>
+                <Value type="Double">0.7</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Tube Metal Temperature</Name>
@@ -23493,7 +23493,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Duty</Name>
-                <Value type="Double">0.6</Value>
+                <Value type="Double">0.4</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Tube Metal Temperature</Name>
@@ -23864,7 +23864,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">304.0</Value>
+                <Value type="Double">213.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Run Status</Name>
@@ -24634,7 +24634,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
         </AFAttribute>
         <AFAttribute>
           <Name>Refinery Nameplate Capacity</Name>
-          <Value type="Double">3750.0</Value>
+          <Value type="Double">3350.0</Value>
         </AFAttribute>
         <AFAttribute>
           <Name>Field Oil Rate</Name>
@@ -26355,7 +26355,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">4000.0</Value>
+              <Value type="Double">3500.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -26470,7 +26470,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">4500.0</Value>
+                <Value type="Double">4000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Head</Name>
@@ -26839,7 +26839,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">3750.0</Value>
+              <Value type="Double">3350.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -26886,7 +26886,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">4500.0</Value>
+                <Value type="Double">4000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Head</Name>
@@ -27021,7 +27021,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Duty</Name>
-                <Value type="Double">7.5</Value>
+                <Value type="Double">6.7</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Tube Metal Temperature</Name>
@@ -27231,7 +27231,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Duty</Name>
-                <Value type="Double">4.1</Value>
+                <Value type="Double">3.7</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Tube Metal Temperature</Name>
@@ -27602,7 +27602,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">2280.0</Value>
+                <Value type="Double">2037.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Run Status</Name>
@@ -27765,7 +27765,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Total Capacity</Name>
-              <Value type="Double">20000.0</Value>
+              <Value type="Double">19000.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Total Inventory</Name>
@@ -27946,7 +27946,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Nominal Capacity</Name>
-                <Value type="Double">7000.0</Value>
+                <Value type="Double">6000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Fill Height</Name>
@@ -27954,7 +27954,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Diameter</Name>
-                <Value type="Double">32.3</Value>
+                <Value type="Double">29.9</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Level</Name>
@@ -28372,7 +28372,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
         </AFAttribute>
         <AFAttribute>
           <Name>Refinery Nameplate Capacity</Name>
-          <Value type="Double">3250.0</Value>
+          <Value type="Double">2800.0</Value>
         </AFAttribute>
         <AFAttribute>
           <Name>Field Oil Rate</Name>
@@ -29924,7 +29924,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">3500.0</Value>
+              <Value type="Double">3000.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -30039,7 +30039,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">4000.0</Value>
+                <Value type="Double">3500.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Head</Name>
@@ -30408,7 +30408,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">3250.0</Value>
+              <Value type="Double">2800.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -30455,7 +30455,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">4000.0</Value>
+                <Value type="Double">3500.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Head</Name>
@@ -30590,7 +30590,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Duty</Name>
-                <Value type="Double">6.5</Value>
+                <Value type="Double">5.6</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Tube Metal Temperature</Name>
@@ -30753,7 +30753,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">2500.0</Value>
+              <Value type="Double">2000.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -30800,7 +30800,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Duty</Name>
-                <Value type="Double">3.6</Value>
+                <Value type="Double">3.1</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Tube Metal Temperature</Name>
@@ -31171,7 +31171,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">1976.0</Value>
+                <Value type="Double">1702.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Run Status</Name>
@@ -31334,7 +31334,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Total Capacity</Name>
-              <Value type="Double">19000.0</Value>
+              <Value type="Double">16000.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Total Inventory</Name>
@@ -31375,7 +31375,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Nominal Capacity</Name>
-                <Value type="Double">5000.0</Value>
+                <Value type="Double">4000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Fill Height</Name>
@@ -31383,7 +31383,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Diameter</Name>
-                <Value type="Double">27.3</Value>
+                <Value type="Double">24.4</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Level</Name>
@@ -31515,7 +31515,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Nominal Capacity</Name>
-                <Value type="Double">6000.0</Value>
+                <Value type="Double">5000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Fill Height</Name>
@@ -31523,7 +31523,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Diameter</Name>
-                <Value type="Double">29.9</Value>
+                <Value type="Double">27.3</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Level</Name>
@@ -31585,7 +31585,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Nominal Capacity</Name>
-                <Value type="Double">5000.0</Value>
+                <Value type="Double">4000.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Fill Height</Name>
@@ -31593,7 +31593,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Diameter</Name>
-                <Value type="Double">27.3</Value>
+                <Value type="Double">24.4</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Level</Name>
@@ -31941,7 +31941,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
         </AFAttribute>
         <AFAttribute>
           <Name>Refinery Nameplate Capacity</Name>
-          <Value type="Double">1500.0</Value>
+          <Value type="Double">1400.0</Value>
         </AFAttribute>
         <AFAttribute>
           <Name>Field Oil Rate</Name>
@@ -32929,7 +32929,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">2000.0</Value>
+              <Value type="Double">1500.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -33413,7 +33413,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
             </AFAttribute>
             <AFAttribute>
               <Name>Design Capacity</Name>
-              <Value type="Double">1500.0</Value>
+              <Value type="Double">1400.0</Value>
             </AFAttribute>
             <AFAttribute>
               <Name>Unit Status</Name>
@@ -33595,7 +33595,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Duty</Name>
-                <Value type="Double">3.0</Value>
+                <Value type="Double">2.8</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Tube Metal Temperature</Name>
@@ -33805,7 +33805,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Design Duty</Name>
-                <Value type="Double">1.7</Value>
+                <Value type="Double">1.5</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Max Tube Metal Temperature</Name>
@@ -34176,7 +34176,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
               </AFAttribute>
               <AFAttribute>
                 <Name>Rated Flow</Name>
-                <Value type="Double">912.0</Value>
+                <Value type="Double">851.0</Value>
               </AFAttribute>
               <AFAttribute>
                 <Name>Run Status</Name>

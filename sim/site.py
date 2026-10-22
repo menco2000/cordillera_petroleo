@@ -264,7 +264,7 @@ class Site:
         put("C-101", "QDSL", dsl)
         put("C-101", "QRES", res)
         put("CDU100", "STATUS", self.idx["Unit Status"][
-            "Shutdown" if feed <= 0 else "Normal Operation" if load >= 0.7 else "Reduced Rate"])
+            "Shutdown" if feed <= 0 else "Normal Operation" if load >= 0.6 else "Reduced Rate"])
         put("CDU100", "SCEN", self.idx["Sim Scenario"][cdu_scen])
         put("CDU100", "THRU", feed)
 
@@ -351,7 +351,7 @@ class Site:
         put("C-201", "QVR", vr * (1 + g(0, 0.01)))
         put("C-201", "QWO", 0.06 * vfeed * (1 + g(0, 0.01)))
         vdu_status = "Shutdown" if vfeed <= 0 else "Upset" if ptop > 70 else \
-            "Normal Operation" if vload > 0.5 else "Reduced Rate"
+            "Normal Operation" if vload > 0.35 else "Reduced Rate"
         put("VDU200", "STATUS", self.idx["Unit Status"][vdu_status])
         put("VDU200", "SCEN", self.idx["Sim Scenario"]["Vacuum Loss" if ve else
                                                        "Cooling Tower Degraded" if degraded else "Normal"])
@@ -398,7 +398,7 @@ class Site:
         put("V-301", "QW", hfeed * 0.04 * (1 + g(0, 0.02)))
         put("V-301", "QG", kflow)
         put("HDT300", "STATUS", self.idx["Unit Status"][
-            "Upset" if not self.k_running else "Normal Operation" if hload > 0.6 else "Reduced Rate"])
+            "Upset" if not self.k_running else "Normal Operation" if hload > 0.35 else "Reduced Rate"])
         put("HDT300", "SCEN", self.idx["Sim Scenario"]["Compressor Trip" if ke else "Normal"])
         put("HDT300", "THRU", hfeed)
 

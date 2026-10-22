@@ -497,6 +497,7 @@ SITES = [
 
 LIFT_TEMPLATE = {"Natural Flow": "Well - Natural Flow", "ESP": "Well - ESP", "Rod Pump": "Well - Rod Pump",
                  "Gas Lift": "Well - Gas Lift", "PCP": "Well - PCP"}
+LIFT_EFFICIENCY = {"Natural Flow": 0.89, "ESP": 0.80, "Gas Lift": 0.92, "Rod Pump": 0.83, "PCP": 0.88}
 DESIGN_RATE = {"Natural Flow": (800, 2500), "ESP": (700, 2200), "Gas Lift": (300, 1200),
                "Rod Pump": (60, 450), "PCP": (150, 700)}
 
@@ -609,9 +610,11 @@ def round_up(x, step):
 
 def make_site(rng, s):
     wells = [make_well(rng, s, i + 1, lift) for i, lift in enumerate(s["lift"])]
-    # size the refinery on today's (declined) production, not on the original design rates
-    field_rate = sum(w["values"]["Design Oil Rate"] * current_factor(w["sim"]) for w in wells)
-    cap = round_up(field_rate * 1.2, 250)
+    # Size the refinery on today's expected output: design rate x decline x lift efficiency
+    # (efficiency measured from the simulator, includes downtime), for ~80% utilization.
+    field_rate = sum(w["values"]["Design Oil Rate"] * current_factor(w["sim"]) * LIFT_EFFICIENCY[w["values"]["Lift Method"]]
+                     for w in wells)
+    cap = round_up(field_rate / 0.8, 50)
     crude_tank = round_up(cap * 2.5, 5000)  # ~2.5 days each
     split = {"Gasoline": 0.25, "Jet Kerosene": 0.15, "Diesel": 0.35, "Fuel Oil": 0.25}
 
