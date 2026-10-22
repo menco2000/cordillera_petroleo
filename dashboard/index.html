@@ -80,6 +80,11 @@ svg.ic { width: 12px; height: 12px; flex: none; }
 #tip .units .m { color: var(--ink-2); font-variant-numeric: tabular-nums; font-size: .78rem; }
 #tip .why { margin-top: 6px; color: var(--ink-2); font-size: .78rem; }
 #tip .hint { margin-top: 6px; color: var(--muted); font-size: .74rem; }
+#designs { top: calc(14px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); padding: 4px; display: flex; gap: 2px; font-size: .78rem; }
+#designs a { color: var(--ink-2); text-decoration: none; padding: 5px 10px; border-radius: 8px; white-space: nowrap; }
+#designs a:hover { color: var(--ink); background: rgba(255,255,255,.06); }
+#designs a.on { color: #04121a; background: var(--accent); font-weight: 600; }
+@media (max-width: 900px) { #designs { top: auto; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -97,6 +102,7 @@ svg.ic { width: 12px; height: 12px; flex: none; }
 <div class="chip" id="note" hidden></div>
 <div class="chip" id="legend"></div>
 <div class="chip" id="tip" hidden></div>
+<nav class="chip" id="designs" aria-label="Map designs"></nav>
 
 <script src="vendor/leaflet/leaflet.js"></script>
 <script src="config.js"></script>
@@ -104,6 +110,7 @@ svg.ic { width: 12px; height: 12px; flex: none; }
 <script src="data/map.js"></script>
 <script src="data/demo.js"></script>
 <script src="source.js"></script>
+<script src="common.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

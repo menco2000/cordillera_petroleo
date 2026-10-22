@@ -16,6 +16,20 @@ Status: **Alert** if a refinery unit is upset or shut down, or 30% or more of th
 (vacuum loss, compressor trip, cooling tower degraded, power outage). Heater fouling is shown in
 the refinery tooltip but doesn't change the status.
 
+## Designs
+
+Four looks over the same data and status rules. Switch with the bar at the top of each page.
+A link like `holo.html#BAR` opens a site directly in any design.
+
+| Page | Look | Needs internet |
+|---|---|---|
+| `index.html` | **Satellite**: real imagery, clean markers, hover tooltips only | imagery only (falls back to outlines) |
+| `holo.html` | **Holo 3D**: tilted, extruded neon continent; glowing columns per site with the site's wells as a small skyline; tabs switch column height between oil, refinery throughput and wells producing; HUD detail windows; tilt/north dial | no |
+| `hex.html` | **Hex grid**: continent drawn as hexagons that light up around each site (color = status, reach = production); callout chips; statistics column and big headline numbers; animated arcs from wells to the refinery | no |
+| `night.html` | **Night ops**: satellite imagery darkened to a night-vision tint; pulsing beacons; HUD panels; live cursor coordinates | imagery only (falls back to outlines) |
+
+All designs share `common.js` (data loading, status rules, tooltip content), so the numbers are the same everywhere.
+
 ## Map imagery
 
 Satellite imagery comes from Esri World Imagery with Esri's place-name overlay, loaded by the
@@ -29,7 +43,11 @@ but some uses need an ArcGIS account.
 ## Files
 
 ```
-index.html, app.js     the page (Leaflet 1.9.4 bundled in vendor/leaflet, BSD-2 license)
+index.html, app.js     Satellite design (Leaflet 1.9.4 bundled in vendor/leaflet, BSD-2 license)
+holo.html, holo.js     Holo 3D design
+hex.html, hex.js       Hex grid design
+night.html, night.js   Night ops design
+common.js              shared data loading, status rules and tooltip content
 source.js              data layer: PI Web API, or the bundled demo data
 config.js              PI Web API URL, AF server, data source, refresh interval, tile URLs
 data/model.js          sites, wells, AF element paths (generated)

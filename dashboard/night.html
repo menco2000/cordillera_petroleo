@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cordillera Night Ops</title>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Rajdhani:wght@600;700&display=swap">
+<style>
+/* Layout: the satellite map, darkened and pulled toward blue like a night-vision feed. Sites are
+   pulsing beacons; HUD panels with corner brackets sit at the edges; a cursor readout shows
+   coordinates. Details open in a HUD window on hover. One dark look on purpose. */
+:root {
+  color-scheme: dark;
+  --bg: #02070c;
+  --hud: rgba(3, 14, 22, 0.8);
+  --line: rgba(80, 230, 200, 0.4);
+  --ink: #e8fff9;
+  --ink-2: #9cc9bf;
+  --muted: #5d8a80;
+  --accent: #4df0c8;
+  --good: #4df0c8;
+  --warning: #ffc23d;
+  --critical: #ff4d5e;
+  --planned: #7b8f8a;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --display: "Rajdhani", "Arial Narrow", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--mono); font-size: 13px; overflow: hidden; }
+#map { position: fixed; inset: 0; background: var(--bg); }
+.leaflet-container { background: var(--bg); font-family: var(--mono); }
+.night .leaflet-tile-pane { filter: grayscale(0.55) brightness(0.5) contrast(1.25) sepia(0.35) hue-rotate(140deg) saturate(1.4); }
+#vignette { position: fixed; inset: 0; pointer-events: none; z-index: 400;
+  background: radial-gradient(ellipse 75% 70% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,6,10,.75) 100%),
+              repeating-linear-gradient(0deg, rgba(77,240,200,.035) 0 1px, transparent 1px 3px); }
+.leaflet-control-attribution { background: rgba(2,7,12,.7) !important; color: var(--muted) !important; font-size: 10px; }
+.leaflet-control-attribution a { color: var(--ink-2) !important; }
+.leaflet-bar a { background: var(--hud) !important; color: var(--accent) !important; border-color: var(--line) !important; }
+
+.hud { position: fixed; z-index: 1000; background: var(--hud); border: 1px solid var(--line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.hud::before, .hud::after { content: ""; position: absolute; width: 12px; height: 12px; border: 2px solid var(--accent); }
+.hud::before { left: -2px; top: -2px; border-right: 0; border-bottom: 0; }
+.hud::after { right: -2px; bottom: -2px; border-left: 0; border-top: 0; }
+#panel { top: calc(16px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); padding: 12px 16px; min-width: 250px; display: grid; gap: 7px; }
+#panel .t { font-family: var(--display); font-size: 1.2rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+#panel .sub { color: var(--muted); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; }
+#panel .big { font-family: var(--display); font-size: 2.3rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+#panel .big small { font-family: var(--mono); font-size: .8rem; color: var(--ink-2); margin-left: 6px; font-weight: 400; }
+#panel .grid { display: grid; grid-template-columns: auto auto; gap: 3px 18px; font-size: .78rem; }
+#panel .grid span:nth-child(odd) { color: var(--ink-2); }
+#panel .grid span:nth-child(even) { text-align: right; font-variant-numeric: tabular-nums; }
+#panel button { justify-self: start; font: inherit; color: var(--accent); background: none; border: 1px solid var(--line); padding: 3px 10px; cursor: pointer; }
+#panel button:hover { background: rgba(77,240,200,.08); }
+#designs { top: calc(16px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); padding: 3px; display: flex; gap: 2px; font-size: .74rem; }
+#designs a { color: var(--ink-2); text-decoration: none; padding: 4px 9px; white-space: nowrap; }
+#designs a:hover { color: var(--ink); }
+#designs a.on { color: #02110d; background: var(--accent); font-weight: 600; }
+#readout { bottom: calc(22px + env(safe-area-inset-bottom, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); padding: 7px 12px; font-size: .74rem; color: var(--ink-2); display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
+#readout b { color: var(--accent); font-weight: 500; }
+#legend { bottom: calc(22px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); padding: 6px 12px; font-size: .72rem; color: var(--ink-2); display: flex; gap: 14px; }
+#legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+#note { top: calc(58px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); padding: 7px 11px; font-size: .72rem; color: var(--ink-2); max-width: 340px; }
+@media (max-width: 760px) { #legend { display: none; } #designs { top: auto; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); right: 56px; } #note { top: auto; bottom: 64px; left: 16px; right: auto; } #readout { display: none; } }
+
+/* beacons */
+.bc { position: relative; width: 0; height: 0; color: var(--c); }
+.bc .core { position: absolute; left: calc(var(--d) / -2); top: calc(var(--d) / -2); width: var(--d); height: var(--d); border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 18%, var(--c) 30%, color-mix(in srgb, var(--c) 30%, transparent) 70%); box-shadow: 0 0 14px var(--c), 0 0 28px var(--c); }
+.bc .ring { position: absolute; left: calc(var(--d) * -1.2); top: calc(var(--d) * -1.2); width: calc(var(--d) * 2.4); height: calc(var(--d) * 2.4); border-radius: 50%; border: 1.5px solid var(--c); opacity: 0; animation: ping 2.6s ease-out infinite; }
+.bc .ring.r2 { animation-delay: 1.3s; }
+@keyframes ping { 0% { transform: scale(.35); opacity: .9; } 100% { transform: scale(1.4); opacity: 0; } }
+.bc .lbl { position: absolute; left: calc(var(--d) / 2 + 9px); top: -10px; white-space: nowrap; font-size: 12px; line-height: 1.2; color: var(--ink); text-shadow: 0 0 4px #000, 0 0 8px #000; pointer-events: none; letter-spacing: .02em; }
+.bc .lbl small { display: block; color: var(--c); font-size: 11px; }
+.bc .sq { position: absolute; left: -11px; top: -11px; width: 22px; height: 22px; border: 2px solid var(--c); background: rgba(2,14,20,.85); box-shadow: 0 0 14px var(--c); display: grid; place-items: center; }
+.bc .sq svg { width: 13px; height: 13px; }
+.leaflet-marker-icon.bc-wrap { background: none; border: 0; }
+.leaflet-marker-icon.bc-wrap:focus-visible .core, .leaflet-marker-icon.bc-wrap:focus-visible .sq { outline: 2px solid #fff; outline-offset: 3px; }
+.flowline { stroke-dasharray: 2 7; animation: flow 1.2s linear infinite; }
+@keyframes flow { to { stroke-dashoffset: -18; } }
+
+#tip { z-index: 1100; pointer-events: none; padding: 0 0 10px; min-width: 240px; max-width: 320px; font-size: .78rem; }
+#tip .bar { display: flex; justify-content: space-between; padding: 5px 10px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: .7rem; }
+#tip > :not(.bar) { margin-left: 12px; margin-right: 12px; }
+#tip h3 { margin: 8px 0 4px; font-family: var(--display); font-size: 1.15rem; font-weight: 700; letter-spacing: .04em; }
+#tip .kv { display: grid; grid-template-columns: auto auto; gap: 3px 14px; margin-top: 8px; }
+#tip .kv span:nth-child(odd) { color: var(--ink-2); }
+#tip .kv span:nth-child(even) { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+#tip .units { display: grid; gap: 4px; margin-top: 8px; }
+#tip .units div { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+#tip .units .m { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+#tip .why { margin-top: 8px; color: var(--warning); }
+#tip .hint { margin-top: 6px; color: var(--muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; }
+svg.ic { width: 12px; height: 12px; flex: none; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: .72rem; padding: 2px 8px 2px 6px; border: 1px solid var(--line); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .bc .ring, .flowline { animation: none; } }
+</style>
+</head>
+<body class="night">
+<div id="map" role="application" aria-label="Night map of Cordillera Petróleo sites and wells"></div>
+<div id="vignette"></div>
+<div class="hud" id="panel"></div>
+<nav class="hud" id="designs" aria-label="Map designs"></nav>
+<div class="hud" id="note" hidden></div>
+<div class="hud" id="readout" aria-hidden="true"></div>
+<div class="hud" id="legend"></div>
+<div class="hud" id="tip" hidden></div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="config.js"></script>
+<script src="data/model.js"></script>
+<script src="data/map.js"></script>
+<script src="data/demo.js"></script>
+<script src="source.js"></script>
+<script src="common.js"></script>
+<script src="night.js"></script>
+</body>
+</html>
