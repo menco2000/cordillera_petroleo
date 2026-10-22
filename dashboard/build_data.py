@@ -6,13 +6,12 @@
 
 Writes
   dashboard/data/model.js  sites, wells and AF element paths from model/model.json
-  dashboard/data/map.js    South America country outlines (Natural Earth 1:50m, public domain)
+  dashboard/data/map.js    country outlines, offline fallback for the satellite map (Natural Earth 1:50m)
   dashboard/data/demo.js   ~90 days of simulator output, used when PI Web API is not reachable
 """
 import argparse
 import datetime as dt
 import json
-import math
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -51,16 +50,6 @@ def index(node, out):
     return out
 
 
-def merc(lat):
-    lat = max(-85.0, min(85.0, lat))
-    return math.degrees(math.log(math.tan(math.pi / 4 + math.radians(lat) / 2)))
-
-
-def proj(lon, lat):
-    """Shared with app.js: x = lon, y = -mercator(lat), in degrees."""
-    return lon, -merc(lat)
-
-
 # ---------------------------------------------------------------- model.js
 def build_model(model):
     sites = []
@@ -96,13 +85,14 @@ def build_model(model):
 
 # ---------------------------------------------------------------- map.js
 def build_map(geojson_path):
+    """Country outlines as [lat, lon] rings: offline fallback when satellite tiles can't load."""
     d = json.loads(Path(geojson_path).read_text(encoding="utf-8"))
     lo0, la0, lo1, la1 = BBOX
     shapes = []
     for f in d["features"]:
         g = f["geometry"]
         polys = g["coordinates"] if g["type"] == "MultiPolygon" else [g["coordinates"]]
-        parts = []
+        rings = []
         for poly in polys:
             ring = poly[0]
             lons = [p[0] for p in ring]
@@ -111,16 +101,15 @@ def build_map(geojson_path):
                 continue
             pts, last = [], None
             for lon, lat in ring:
-                x, y = proj(lon, lat)
-                p = (round(x, 3), round(y, 3))
+                p = [round(lat, 3), round(lon, 3)]
                 if p != last:
                     pts.append(p)
                     last = p
             if len(pts) >= 4:
-                parts.append("M" + "L".join(f"{x},{y}" for x, y in pts) + "Z")
-        if parts:
+                rings.append(pts)
+        if rings:
             shapes.append({"name": f["properties"]["NAME"], "sa": f["properties"].get("CONTINENT") == "South America",
-                           "d": "".join(parts)})
+                           "rings": rings})
     return {"bbox": BBOX, "shapes": shapes, "source": "Natural Earth 1:50m admin-0 countries (public domain)"}
 
 
