@@ -12,7 +12,7 @@ physical model names the refinery units.
 | Element templates | 29 + 1 event frame template |
 | PI points | 2,347 (2,305 written by the simulator, 42 by rollup analyses) |
 | Analyses | 1 event frame generation (Well) + 6 rollup templates, 97 instances |
-| Notification rule | 1 template on Well (55 instances) |
+| Notification rule | 1 rule template on each of the 5 lift templates (55 instances) |
 
 Model review page: `docs/af-model.html` (open in a browser).
 
@@ -114,7 +114,10 @@ and the rollup totals then appear for the whole history.
 | Enterprise | Rollup Total Oil Production | Rollup, Sum of child `Field Oil Rate` → `Total Oil Production` |
 | Enterprise | Rollup Total Refinery Throughput | Rollup, Sum of child `Refinery Throughput` → `Total Refinery Throughput` |
 
-Notification rule template on **Well**: *Extraction Run Notification*, criteria
+Notification rule template *Extraction Run Notification* on each lift template (**Well - ESP**,
+**Well - Rod Pump**, **Well - Gas Lift**, **Well - PCP**, **Well - Natural Flow**). AF does not inherit
+notification rule templates from a base template; the rule's target must be the element's own template.
+Criteria
 `AnalysisName:"Extraction Run Detection"`. Add subscribers after import and choose
 "notify on start" and/or "end" per subscriber.
 

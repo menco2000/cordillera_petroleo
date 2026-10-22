@@ -152,7 +152,19 @@ class Builder:
         sub(tr, "AFPlugIn", "Natural")
         sub(tr, "ConfigString", "")
 
-    def notification_template(self, parent, n):
+    def notification_targets(self):
+        """Templates that get the notification rule template.
+
+        AF does not inherit notification rule templates: the rule's Target must equal the
+        element's own template. So the rule goes on every leaf template derived from the
+        configured base (Well -> Well - ESP, Well - Rod Pump, ...).
+        """
+        base = self.m["notification"]["template"]
+        bases = {t["base"] for t in self.m["templates"]}
+        return {t["name"] for t in self.m["templates"]
+                if base in chain(t["name"]) and t["name"] not in bases}
+
+    def notification_template(self, parent, n, target):
         x = sub(parent, "AFNotificationRuleTemplate")
         sub(x, "Name", n["name"])
         sub(x, "Description", "Sends start/stop of each Extraction Run. Add subscribers after import.")
@@ -161,7 +173,7 @@ class Builder:
         sub(x, "ResendInterval", "0")
         sub(x, "NonrepetitionInterval", "0")
         sub(x, "Criteria", n["criteria"])
-        sub(x, "Target", n["template"])
+        sub(x, "Target", target)
         sub(x, "ContentExample", "")
 
     def element_template(self, parent, t):
@@ -182,8 +194,8 @@ class Builder:
             for an in self.m["analyses"]:
                 if an["template"] == t["name"]:
                     self.analysis_template(x, an)
-            if self.m["notification"]["template"] == t["name"]:
-                self.notification_template(x, self.m["notification"])
+            if t["name"] in self.notification_targets():
+                self.notification_template(x, self.m["notification"], t["name"])
 
     def event_frame_template(self, parent):
         ef = self.m["event_frame_template"]
@@ -268,7 +280,7 @@ class Builder:
                     tgt = sub(y, "Target")
                     sub(tgt, "AFElementRef", node["path"])
             n = self.m["notification"]
-            if n["template"] in names:
+            if node["template"] in self.notification_targets():
                 y = sub(x, "AFNotificationRule")
                 sub(y, "Name", n["name"])
                 sub(y, "Description", "")
@@ -277,7 +289,7 @@ class Builder:
                 sub(y, "ResendInterval", "0")
                 sub(y, "NonrepetitionInterval", "0")
                 sub(y, "Criteria", n["criteria"])
-                sub(y, "Template", f"ElementTemplates[{n['template']}]\\NotificationRuleTemplates[{n['name']}]")
+                sub(y, "Template", f"ElementTemplates[{node['template']}]\\NotificationRuleTemplates[{n['name']}]")
                 sub(y, "ContentExample", "")
 
     # ---- document ----------------------------------------------------------
@@ -362,6 +374,13 @@ def validate(model, tree):
     for e in db.iter("AFElement"):
         if e.findtext("Template") not in templates:
             errors.append(f"element {e.findtext('Name')}: unknown template")
+    rule_targets = {(t.findtext("Name"), r.findtext("Name")) for t in db.findall("AFElementTemplate")
+                    for r in t.findall("AFNotificationRuleTemplate") if r.findtext("Target") == t.findtext("Name")}
+    for e in db.iter("AFElement"):
+        for r in e.findall("AFNotificationRule"):
+            if (e.findtext("Template"), r.findtext("Name")) not in rule_targets:
+                errors.append(f"element {e.findtext('Name')}: notification rule template does not target "
+                              f"its template {e.findtext('Template')}")
     return errors
 
 

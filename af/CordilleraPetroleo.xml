@@ -2050,17 +2050,6 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
           <ConfigString />
         </AFTimeRule>
       </AFAnalysisTemplate>
-      <AFNotificationRuleTemplate>
-        <Name>Extraction Run Notification</Name>
-        <Description>Sends start/stop of each Extraction Run. Add subscribers after import.</Description>
-        <CreateEnabled>true</CreateEnabled>
-        <MultiTriggerEventOption>HighestSeverity</MultiTriggerEventOption>
-        <ResendInterval>0</ResendInterval>
-        <NonrepetitionInterval>0</NonrepetitionInterval>
-        <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-        <Target>Well</Target>
-        <ContentExample />
-      </AFNotificationRuleTemplate>
     </AFElementTemplate>
     <AFElementTemplate>
       <Name>Well - Natural Flow</Name>
@@ -2089,6 +2078,17 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
         <ConfigString />
         <AFAttributeCategoryRef>Completion</AFAttributeCategoryRef>
       </AFAttributeTemplate>
+      <AFNotificationRuleTemplate>
+        <Name>Extraction Run Notification</Name>
+        <Description>Sends start/stop of each Extraction Run. Add subscribers after import.</Description>
+        <CreateEnabled>true</CreateEnabled>
+        <MultiTriggerEventOption>HighestSeverity</MultiTriggerEventOption>
+        <ResendInterval>0</ResendInterval>
+        <NonrepetitionInterval>0</NonrepetitionInterval>
+        <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
+        <Target>Well - Natural Flow</Target>
+        <ContentExample />
+      </AFNotificationRuleTemplate>
     </AFElementTemplate>
     <AFElementTemplate>
       <Name>Well - ESP</Name>
@@ -2270,6 +2270,17 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
         <ConfigString>\\%@\Cordillera Petróleo|PI Server%\%@Tag Prefix%.VIB;pointtype=Float32;pointsource=L;compressing=0;engunits=g</ConfigString>
         <AFAttributeCategoryRef>Lift</AFAttributeCategoryRef>
       </AFAttributeTemplate>
+      <AFNotificationRuleTemplate>
+        <Name>Extraction Run Notification</Name>
+        <Description>Sends start/stop of each Extraction Run. Add subscribers after import.</Description>
+        <CreateEnabled>true</CreateEnabled>
+        <MultiTriggerEventOption>HighestSeverity</MultiTriggerEventOption>
+        <ResendInterval>0</ResendInterval>
+        <NonrepetitionInterval>0</NonrepetitionInterval>
+        <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
+        <Target>Well - ESP</Target>
+        <ContentExample />
+      </AFNotificationRuleTemplate>
     </AFElementTemplate>
     <AFElementTemplate>
       <Name>Well - Rod Pump</Name>
@@ -2451,6 +2462,17 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
         <ConfigString>\\%@\Cordillera Petróleo|PI Server%\%@Tag Prefix%.RUNT;pointtype=Float32;pointsource=L;compressing=0;engunits=%</ConfigString>
         <AFAttributeCategoryRef>Lift</AFAttributeCategoryRef>
       </AFAttributeTemplate>
+      <AFNotificationRuleTemplate>
+        <Name>Extraction Run Notification</Name>
+        <Description>Sends start/stop of each Extraction Run. Add subscribers after import.</Description>
+        <CreateEnabled>true</CreateEnabled>
+        <MultiTriggerEventOption>HighestSeverity</MultiTriggerEventOption>
+        <ResendInterval>0</ResendInterval>
+        <NonrepetitionInterval>0</NonrepetitionInterval>
+        <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
+        <Target>Well - Rod Pump</Target>
+        <ContentExample />
+      </AFNotificationRuleTemplate>
     </AFElementTemplate>
     <AFElementTemplate>
       <Name>Well - Gas Lift</Name>
@@ -2547,6 +2569,17 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
         <ConfigString>\\%@\Cordillera Petróleo|PI Server%\%@Tag Prefix%.GLCHOKE;pointtype=Float32;pointsource=L;compressing=0;engunits=%</ConfigString>
         <AFAttributeCategoryRef>Lift</AFAttributeCategoryRef>
       </AFAttributeTemplate>
+      <AFNotificationRuleTemplate>
+        <Name>Extraction Run Notification</Name>
+        <Description>Sends start/stop of each Extraction Run. Add subscribers after import.</Description>
+        <CreateEnabled>true</CreateEnabled>
+        <MultiTriggerEventOption>HighestSeverity</MultiTriggerEventOption>
+        <ResendInterval>0</ResendInterval>
+        <NonrepetitionInterval>0</NonrepetitionInterval>
+        <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
+        <Target>Well - Gas Lift</Target>
+        <ContentExample />
+      </AFNotificationRuleTemplate>
     </AFElementTemplate>
     <AFElementTemplate>
       <Name>Well - PCP</Name>
@@ -2660,6 +2693,17 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
         <ConfigString>\\%@\Cordillera Petróleo|PI Server%\%@Tag Prefix%.AMPS;pointtype=Float32;pointsource=L;compressing=0;engunits=A</ConfigString>
         <AFAttributeCategoryRef>Lift</AFAttributeCategoryRef>
       </AFAttributeTemplate>
+      <AFNotificationRuleTemplate>
+        <Name>Extraction Run Notification</Name>
+        <Description>Sends start/stop of each Extraction Run. Add subscribers after import.</Description>
+        <CreateEnabled>true</CreateEnabled>
+        <MultiTriggerEventOption>HighestSeverity</MultiTriggerEventOption>
+        <ResendInterval>0</ResendInterval>
+        <NonrepetitionInterval>0</NonrepetitionInterval>
+        <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
+        <Target>Well - PCP</Target>
+        <ContentExample />
+      </AFNotificationRuleTemplate>
     </AFElementTemplate>
     <AFElementTemplate>
       <Name>Equipment Base</Name>
@@ -5387,7 +5431,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -5625,7 +5669,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -5863,7 +5907,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -6101,7 +6145,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -6339,7 +6383,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - ESP]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -6577,7 +6621,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - ESP]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -6796,7 +6840,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - PCP]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -7015,7 +7059,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - PCP]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -9413,7 +9457,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Gas Lift]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -9628,7 +9672,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Gas Lift]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -9843,7 +9887,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Gas Lift]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -10058,7 +10102,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Gas Lift]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -10273,7 +10317,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Gas Lift]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -10488,7 +10532,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Gas Lift]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -10726,7 +10770,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -10964,7 +11008,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -11202,7 +11246,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -11440,7 +11484,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - ESP]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -13819,7 +13863,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Natural Flow]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -14015,7 +14059,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Natural Flow]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -14211,7 +14255,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Natural Flow]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -14426,7 +14470,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Gas Lift]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -14641,7 +14685,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Gas Lift]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -14879,7 +14923,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - ESP]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -15117,7 +15161,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - ESP]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -15355,7 +15399,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -15593,7 +15637,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -18014,7 +18058,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -18252,7 +18296,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -18490,7 +18534,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -18728,7 +18772,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -18947,7 +18991,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - PCP]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -19166,7 +19210,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - PCP]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -21587,7 +21631,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -21825,7 +21869,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -22063,7 +22107,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -22282,7 +22326,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - PCP]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -22501,7 +22545,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - PCP]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -24922,7 +24966,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -25160,7 +25204,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -25398,7 +25442,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Rod Pump]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -25613,7 +25657,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Gas Lift]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -25828,7 +25872,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Gas Lift]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -26043,7 +26087,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Gas Lift]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -26239,7 +26283,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Natural Flow]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -28660,7 +28704,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - ESP]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -28898,7 +28942,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - ESP]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -29136,7 +29180,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - ESP]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -29374,7 +29418,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - ESP]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -29612,7 +29656,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - ESP]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -29808,7 +29852,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Natural Flow]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -32187,7 +32231,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Natural Flow]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -32383,7 +32427,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Natural Flow]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -32598,7 +32642,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Gas Lift]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>
@@ -32813,7 +32857,7 @@ StartTrigger1 := 'Well Status' = "Producing" And 'Oil Rate' &gt; 5;</ConfigStrin
                 <ResendInterval>0</ResendInterval>
                 <NonrepetitionInterval>0</NonrepetitionInterval>
                 <Criteria>AnalysisName:"Extraction Run Detection"</Criteria>
-                <Template>ElementTemplates[Well]\NotificationRuleTemplates[Extraction Run Notification]</Template>
+                <Template>ElementTemplates[Well - Gas Lift]\NotificationRuleTemplates[Extraction Run Notification]</Template>
                 <ContentExample />
               </AFNotificationRule>
             </AFElement>

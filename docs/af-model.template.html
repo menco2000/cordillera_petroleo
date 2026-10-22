@@ -446,6 +446,7 @@ flowchart LR
       <p class="muted" style="font-size:.82rem">Outputs are PI points written by PI Analysis Service. The simulator never writes them.</p></div>
     <div class="panel lcard"><div class="eyebrow">Notification rule template</div><h3>${esc(N.name)}</h3>
       <dl><dt>On template</dt><dd>${esc(N.template)}</dd><dt>Criteria</dt><dd><code>${esc(N.criteria)}</code></dd><dt>Triggers</dt><dd>${N.triggers.map(esc).join(", ")}</dd><dt>Subscribers</dt><dd>${esc(N.subscribers)}</dd></dl>
+      <p class="muted" style="font-size:.82rem">${esc(N.note || "")}</p>
       <div class="muted" style="font-size:.8rem">Message content</div><ul>${N.content.map(c => `<li>${esc(c)}</li>`).join("")}</ul></div>`;
 
   // ---- enums

@@ -745,6 +745,7 @@ NOTIFICATION = {
     "triggers": ["Start", "End"],
     "content": ["Well", "Site", "Lift Method", "Start / end time", "Duration", "Total Oil Produced", "Stop Reason"],
     "subscribers": "Added after import. 'Notify on' start/end is chosen per subscriber.",
+    "note": "AF does not inherit notification rule templates, so the XML puts this rule on each lift template.",
 }
 
 SCENARIOS = {
