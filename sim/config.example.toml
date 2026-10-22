@@ -1,0 +1,19 @@
+# Copy to sim/config.toml and edit. config.toml is git-ignored.
+
+[piwebapi]
+url = "https://YOUR-PIWEBAPI-SERVER/piwebapi"
+data_server = "YOUR-PI-DATA-ARCHIVE"    # name as shown in PI System Explorer
+auth = "kerberos"                       # kerberos | basic | ntlm | anonymous
+username = ""                           # basic / ntlm only, e.g. DOMAIN\\piwriter
+password_env = "PIWEBAPI_PASSWORD"      # password is read from this environment variable
+verify_ssl = true
+ca_bundle = ""                          # path to your corporate CA .pem if needed
+timeout = 120
+workers = 4                             # parallel write requests during backfill
+
+[simulation]
+start = "2026-07-23T00:00:00Z"          # history starts here; keep it fixed so restarts line up
+seed = 20261021
+backfill_step_seconds = 300             # 5 min resolution for history
+realtime_step_seconds = 60              # 1 min resolution live
+update_option = "Replace"

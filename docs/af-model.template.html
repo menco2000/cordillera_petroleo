@@ -139,9 +139,9 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 
 <div class="wrap">
   <header class="top">
-    <div class="eyebrow">PI AF model review · draft for approval before XML</div>
+    <div class="eyebrow">PI AF model · v2 · names for elements, IDs for tags · max 5 levels</div>
     <h1>Cordillera Petróleo AF Model</h1>
-    <p class="muted">Fictional oil &amp; gas company with 8 metropolitan sites across South America. Each site has its own oil field and its own refinery. The hierarchy follows ISA-95 equipment levels, and the ISA-88 physical model names the refinery units. Every element and attribute below comes from <code>model/spec.py</code>, the same file that will generate the AF XML and drive the simulator.</p>
+    <p class="muted">Fictional oil &amp; gas company with 8 metropolitan sites across South America. Each site has its own oil field and its own refinery. The hierarchy follows ISA-95 equipment levels, and the ISA-88 physical model names the refinery units. Every element and attribute below comes from <code>model/spec.py</code>, the same file that generates the AF XML and drives the simulator.</p>
     <div class="stats" id="stats"></div>
   </header>
 
@@ -159,43 +159,43 @@ flowchart LR
     subgraph WF["Wellfield"]
       W["Wells ×4–10&lt;br/&gt;Natural Flow · ESP · Rod Pump&lt;br/&gt;Gas Lift · PCP"]
     end
-    subgraph GT["Gathering &amp; Transfer"]
-      SEP["SEP-001&lt;br/&gt;Separator"] --> P001["P-001&lt;br/&gt;Transfer Pump"] --> PL["PL-001&lt;br/&gt;Pipeline"]
+    subgraph GT["Gathering and Transfer"]
+      SEP["Production Separator&lt;br/&gt;SEP-001"] --> P001["Crude Transfer Pump&lt;br/&gt;P-001"] --> PL["Crude Pipeline&lt;br/&gt;PL-001"]
     end
   end
   W --> SEP
-  subgraph CRS["Area · Crude Receiving &amp; Storage"]
+  subgraph CRS["Area · Crude Receiving and Storage"]
     subgraph CTF["Crude Tank Farm"]
-      TK1["TK-101 · TK-102&lt;br/&gt;Crude Tanks"]
+      TK1["Crude Tank A · B&lt;br/&gt;TK-101 · TK-102"]
     end
   end
   PL --> TK1
   subgraph CD["Area · Crude Distillation"]
-    subgraph CDU["CDU-100"]
-      P101["P-101&lt;br/&gt;Charge Pump"] --> D101["D-101&lt;br/&gt;Desalter"] --> H101["H-101&lt;br/&gt;Heater"] --> C101["C-101&lt;br/&gt;Atm Column"]
+    subgraph CDU["Atmospheric Distillation Unit · CDU-100"]
+      P101["Crude Charge Pump&lt;br/&gt;P-101"] --> D101["Desalter&lt;br/&gt;D-101"] --> H101["Atmospheric Heater&lt;br/&gt;H-101"] --> C101["Atmospheric Column&lt;br/&gt;C-101"]
     end
-    subgraph VDU["VDU-200"]
-      H201["H-201&lt;br/&gt;Vac Heater"] --> C201["C-201&lt;br/&gt;Vac Column"]
-      EJ["EJ-201&lt;br/&gt;Ejectors"]
+    subgraph VDU["Vacuum Distillation Unit · VDU-200"]
+      H201["Vacuum Heater&lt;br/&gt;H-201"] --> C201["Vacuum Column&lt;br/&gt;C-201"]
+      EJ["Vacuum Ejector System&lt;br/&gt;EJ-201"]
     end
   end
   TK1 --> P101
   C101 -- "Atm residue" --> H201
   EJ -. "vacuum" .- C201
   subgraph HT["Area · Hydrotreating"]
-    subgraph HDT["HDT-300"]
-      R301["R-301&lt;br/&gt;Reactor"] --> V301["V-301&lt;br/&gt;HP Separator"]
-      V301 -- "recycle gas" --> K301["K-301&lt;br/&gt;Compressor"]
+    subgraph HDT["Diesel Hydrotreater · HDT-300"]
+      R301["Hydrotreating Reactor&lt;br/&gt;R-301"] --> V301["HP Separator&lt;br/&gt;V-301"]
+      V301 -- "recycle gas" --> K301["Recycle Gas Compressor&lt;br/&gt;K-301"]
       K301 --> R301
     end
   end
   C101 -- "Diesel" --> R301
-  subgraph PSD["Area · Product Storage &amp; Dispatch"]
+  subgraph PSD["Area · Product Storage and Dispatch"]
     subgraph PTF["Product Tank Farm"]
-      TK401["TK-401 Gasoline"]
-      TK402["TK-402 Jet / Kero"]
-      TK403["TK-403 Diesel"]
-      TK404["TK-404 Fuel Oil"]
+      TK401["Gasoline Tank&lt;br/&gt;TK-401"]
+      TK402["Jet Kerosene Tank&lt;br/&gt;TK-402"]
+      TK403["Diesel Tank&lt;br/&gt;TK-403"]
+      TK404["Fuel Oil Tank&lt;br/&gt;TK-404"]
     end
   end
   C101 -- "Naphtha" --> TK401
@@ -203,8 +203,8 @@ flowchart LR
   V301 -- "ULSD" --> TK403
   C201 -- "VGO + residue" --> TK404
   subgraph UTL["Area · Utilities"]
-    B501["B-501&lt;br/&gt;Boiler"]
-    CT501["CT-501&lt;br/&gt;Cooling Tower"]
+    B501["Boiler&lt;br/&gt;B-501"]
+    CT501["Cooling Tower&lt;br/&gt;CT-501"]
   end
   B501 -. "motive steam" .-> EJ
   CT501 -. "cooling water" .-> EJ
@@ -216,11 +216,11 @@ flowchart LR
           <thead><tr><th>ISA-95 level</th><th>ISA-88 equivalent</th><th>In this model</th></tr></thead>
           <tbody>
             <tr><td>Enterprise</td><td>Enterprise</td><td>Cordillera Petróleo</td></tr>
-            <tr><td>Site</td><td>Site</td><td>BAR - Barrancabermeja … (8)</td></tr>
+            <tr><td>Site</td><td>Site</td><td>Barrancabermeja, Maracaibo … (8)</td></tr>
             <tr><td>Area</td><td>Area</td><td>Upstream Production, Crude Distillation … (6 per site)</td></tr>
-            <tr><td>Work Center</td><td>Process Cell</td><td>Wellfield, CDU-100, VDU-200, Product Tank Farm … (9 per site)</td></tr>
-            <tr><td>Work Unit</td><td>Unit</td><td>Each well, C-101, H-101, TK-401 …</td></tr>
-            <tr><td>Equipment Module</td><td>Equipment Module</td><td>P-101, K-301, EJ-201 …</td></tr>
+            <tr><td>Work Center</td><td>Process Cell</td><td>Wellfield, Atmospheric Distillation Unit, Product Tank Farm … (9 per site)</td></tr>
+            <tr><td>Work Unit</td><td>Unit</td><td>Each well (Garzas-01 …), Atmospheric Column, Diesel Tank …</td></tr>
+            <tr><td>Equipment Module</td><td>Equipment Module</td><td>Crude Charge Pump, Recycle Gas Compressor, Vacuum Ejector System …</td></tr>
             <tr><td>Control Module</td><td>Control Module</td><td>Not elements. Each instrument is a PI Point attribute (e.g. <code>CP.BAR.H101.COT</code>)</td></tr>
           </tbody>
         </table>
@@ -228,10 +228,12 @@ flowchart LR
       <div class="panel lcard">
         <h3>Conventions</h3>
         <dl>
-          <dt>Tag name</dt><dd><code>CP.&lt;SITE&gt;.&lt;ASSET&gt;.&lt;SUFFIX&gt;</code>, e.g. <code>CP.LAG.W03.PIP</code>. The prefix is stored in each element's <em>Tag Prefix</em> attribute, so the PI Point references are defined once on the template.</dd>
-          <dt>Units</dt><dd>Oilfield units: psig/psia, bbl/d, Mscf/d, °F. Vacuum in mmHg absolute.</dd>
-          <dt>Inheritance</dt><dd>Asset Base → Well → Well - ESP. Analysis and notification live on <em>Well</em> and reach all lift types.</dd>
-          <dt>No rollups</dt><dd>Field totals are simulator tags, not analyses, to keep the single-analysis rule.</dd>
+          <dt>Names</dt><dd>Elements carry human names (<em>Garzas-01</em>, <em>Crude Charge Pump</em>). The asset ID (<em>BAR-W01</em>, <em>BAR-P-101</em>) lives in the <em>Asset ID</em> attribute.</dd>
+          <dt>Tag name</dt><dd>Built from the ID: <code>CP.&lt;SITE&gt;.&lt;ASSET&gt;.&lt;SUFFIX&gt;</code>, e.g. <code>CP.BAR.P101.FLOW</code>. Stored in <em>Tag Prefix</em>; templates use <code>%@Tag Prefix%</code>.</dd>
+          <dt>Depth</dt><dd>5 levels maximum: Enterprise › Site › Area › Work Center › Work Unit.</dd>
+          <dt>Points</dt><dd>Point source <code>L</code> (Lab), compression off. Status tags are Int32 read through AF enumeration sets.</dd>
+          <dt>Units</dt><dd>Oilfield units: psig/psia, bbl/d, Mscf/d, °F. Units missing from the default AF UOM database (Mscf/d, lb/h, spm…) live in the PI point and attribute description.</dd>
+          <dt>Rollups</dt><dd>Field totals, tank farm inventory and company totals are Rollup analyses.</dd>
           <dt>ISA-88 use</dt><dd>ISA-88 is a batch standard and a refinery runs continuously. So we use its physical model names, and the <em>Extraction Run</em> event frame is the record of each production run.</dd>
         </dl>
       </div>
@@ -270,7 +272,7 @@ flowchart LR
   <section>
     <div class="sec-head">
       <div class="eyebrow">4 · Logic</div>
-      <h2>Analysis, event frame and notification</h2>
+      <h2>Analyses, event frame and notification</h2>
     </div>
     <div class="logic" id="logic"></div>
   </section>
@@ -323,7 +325,8 @@ flowchart LR
   document.getElementById("stats").innerHTML = [
     [st.sites, "sites"], [st.wells, "wells"], [st.elements, "elements"], [st.element_templates, "element templates"],
     [st.pi_points.toLocaleString("en-US"), "PI points"], [st.enumeration_sets, "enumeration sets"],
-    [st.analyses, "analysis"], [st.event_frame_templates, "event frame template"], [st.notification_rules, "notification rule"]
+    [st.depth, "levels deep"], [st.analysis_templates, "analysis templates"], [st.analyses, "analyses"],
+    [st.event_frame_templates, "event frame template"], [st.notification_rules, "notification rule template"]
   ].map(([n, l]) => `<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
 
   // ---- flatten tree
@@ -343,10 +346,10 @@ flowchart LR
   const open = new Set();
   const treeEl = document.getElementById("tree");
   let selected = null; let query = "";
-  const first = nodes.find(r => r.n.name === "BAR-W01");
+  const first = nodes.find(r => r.n.id === "BAR-W01");
   for (let r = first; r; r = r.parent) open.add(r.id);
 
-  function matches(r) { return query && (r.n.name.toLowerCase().includes(query) || r.path.toLowerCase().includes(query)); }
+  function matches(r) { return query && (r.n.name.toLowerCase().includes(query) || r.n.id.toLowerCase().includes(query) || r.path.toLowerCase().includes(query)); }
   function visibleUnderQuery(r) { return !query || matches(r) || r.kids.some(visibleUnderQuery); }
   function label(name) {
     if (!query) return esc(name);
@@ -358,7 +361,7 @@ flowchart LR
       if (!visibleUnderQuery(r)) return "";
       const isOpen = query ? r.kids.some(visibleUnderQuery) : open.has(r.id);
       const has = r.kids.length > 0;
-      const lvl = r.n.isa ? `<span class="lvl">${esc(r.n.isa)}</span>` : "";
+      const lvl = `<span class="lvl">${esc(r.n.id)}</span>`;
       return `<li><div class="node"><button class="tog" type="button" data-t="${r.id}" ${has ? "" : "disabled"} aria-label="toggle">${has ? (isOpen ? "▾" : "▸") : ""}</button>` +
         `<button class="nm${selected === r.id ? " sel" : ""}" type="button" data-s="${r.id}">${label(r.n.name)}${lvl}</button></div>` +
         (has && isOpen ? `<ul>${r.kids.map(li).join("")}</ul>` : "") + `</li>`;
@@ -376,13 +379,13 @@ flowchart LR
 
   // ---- detail
   const detailEl = document.getElementById("detail");
-  const kindChip = k => `<span class="chip k-${k}">${k === "pi" ? "PI Point" : k === "formula" ? "Formula" : "Static"}</span>`;
+  const kindChip = (k, src) => `<span class="chip k-${k}">${k === "pi" ? (src === "analysis" ? "PI Point · rollup" : src === "ref" ? "PI Point · ref" : "PI Point") : k === "formula" ? "Formula" : "Static"}</span>`;
   function select(id) {
     selected = id; const r = byId.get(id); const n = r.n;
     const chain = chainOf(n.template);
     const groups = {};
     chain.forEach(tn => TPL[tn].attrs.forEach(a => { (groups[a.cat] = groups[a.cat] || []).push([a, tn]); }));
-    const order = ["Metadata", "Configuration", "Location", "Reservoir", "Nameplate", "Completion", "Status", "Process", "Lift", "Calculated"];
+    const order = ["Metadata", "Configuration", "Location", "Reservoir", "Nameplate", "Completion", "Status", "Process", "Lift", "Totals", "Calculated"];
     const cats = Object.keys(groups).sort((a, b) => order.indexOf(a) - order.indexOf(b));
     let rows = ""; let count = 0;
     cats.forEach(c => {
@@ -390,21 +393,21 @@ flowchart LR
       groups[c].forEach(([a, tn]) => {
         count++;
         let val;
-        if (a.kind === "pi") val = `${n.tag_prefix}.${a.tag}` + (a.enum ? ` <span class="from">(digital: ${esc(a.enum)})</span>` : "");
-        else if (a.kind === "formula") val = esc(a.expr);
+        if (a.kind === "pi") val = `${n.tag_prefix}.${a.tag}` + (a.enum ? ` <span class="from">(Int32 → ${esc(a.enum)})</span>` : "");
+        else if (a.kind === "formula") val = esc(a.readable);
         else val = (a.children||[]).length ? "" : esc(fmt(n.values[a.name] ?? "—"));
         const inh = tn !== n.template ? `<div class="from">from ${esc(tn)}</div>` : "";
-        rows += `<tr><td>${esc(a.name)}${inh}</td><td>${kindChip(a.kind)}</td><td class="v">${val}</td><td>${esc(a.uom || "")}</td></tr>`;
+        rows += `<tr><td>${esc(a.name)}${inh}</td><td>${kindChip(a.kind, a.src)}</td><td class="v">${val}</td><td>${esc(a.uom || "")}</td></tr>`;
         (a.children||[]).forEach(ch => {
           count++;
           rows += `<tr class="child"><td>${esc(ch.name)}</td><td>${kindChip("static")}</td><td class="v">${esc(fmt(n.values[a.name + "|" + ch.name] ?? "—"))}</td><td>${esc(ch.uom || "")}</td></tr>`;
         });
       });
     });
-    const pis = chain.reduce((s, tn) => s + TPL[tn].attrs.filter(a => a.kind === "pi").length, 0);
+    const pis = chain.reduce((s, tn) => s + TPL[tn].attrs.filter(a => a.kind === "pi" && a.src !== "ref").length, 0);
     detailEl.innerHTML = `
       <div class="path">${esc(r.path)}</div>
-      <div><h2>${esc(n.name)}</h2><p class="muted">${esc(n.desc)}</p></div>
+      <div><h2>${esc(n.name)}</h2><p class="muted">${esc(n.desc)} · Asset ID <code>${esc(n.id)}</code></p></div>
       <div class="meta"><span><b>ISA-95:</b> ${esc(n.isa || "—")}</span><span><b>Attributes:</b> ${count}</span><span><b>PI points:</b> ${pis}</span><span><b>Children:</b> ${r.kids.length}</span></div>
       <div class="tchain"><b style="font-family:var(--body)">Template </b>${chain.map(c => `<span>${esc(c)}</span>`).join("")}</div>
       <div class="scroll-x"><table class="attr-table"><thead><tr><th>Attribute</th><th>Type</th><th>Value / tag / formula</th><th>UOM</th></tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -420,24 +423,28 @@ flowchart LR
     M.templates.filter(t => t.category === c).forEach(t => {
       const chain = chainOf(t.name).slice(0, -1);
       const inherited = chain.reduce((s, tn) => s + TPL[tn].attrs.length, 0);
-      const rows = t.attrs.map(a => `<tr><td>${esc(a.name)}${(a.children||[]).length ? ` <span class="from">(${(a.children||[]).map(c => esc(c.name)).join(", ")})</span>` : ""}</td><td>${a.kind === "pi" ? "." + esc(a.tag) : a.kind === "formula" ? "ƒ" : ""}</td><td>${kindChip(a.kind)}</td><td>${esc(a.uom || "")}</td></tr>`).join("");
+      const rows = t.attrs.map(a => `<tr><td>${esc(a.name)}${(a.children||[]).length ? ` <span class="from">(${(a.children||[]).map(c => esc(c.name)).join(", ")})</span>` : ""}</td><td>${a.kind === "pi" ? "." + esc(a.tag) : a.kind === "formula" ? "ƒ" : ""}</td><td>${kindChip(a.kind, a.src)}</td><td>${esc(a.uom || "")}</td></tr>`).join("");
       tg += `<article class="tcard"><header><h3>${esc(t.name)}</h3><div class="sub">${t.isa ? `<span class="chip k-isa">${esc(t.isa)}</span>` : ""}${chain.length ? `<span>inherits ${inherited} from ${chain.map(esc).join(" → ")}</span>` : ""}<span>${usage[t.name] || 0} elements</span></div><p>${esc(t.desc)}</p></header><div class="scroll-x"><table><tbody>${rows}</tbody></table></div></article>`;
     });
   });
   document.getElementById("tgrid").innerHTML = tg;
 
   // ---- logic
-  const A = M.analysis, EF = M.event_frame_template, N = M.notification;
+  const AN = M.analyses, EF = M.event_frame_template, N = M.notification;
+  const A = AN.find(a => a.type !== "Rollup"), RU = AN.filter(a => a.type === "Rollup");
   document.getElementById("logic").innerHTML = `
-    <div class="panel lcard"><div class="eyebrow">AF Analysis · the only one</div><h3>${esc(A.name)}</h3>
-      <dl><dt>Type</dt><dd>${esc(A.type)}</dd><dt>On template</dt><dd>${esc(A.template)}</dd><dt>Start trigger</dt><dd><code>${esc(A.start_trigger)}</code></dd>
-      <dt>True for</dt><dd>${esc(A.true_for)}</dd><dt>End</dt><dd>${esc(A.end)}</dd><dt>Scheduling</dt><dd>${esc(A.scheduling)}</dd><dt>Creates</dt><dd>${esc(A.ef_template)} event frame</dd></dl>
+    <div class="panel lcard"><div class="eyebrow">Event frame generation analysis</div><h3>${esc(A.name)}</h3>
+      <dl><dt>On template</dt><dd>${esc(A.template)}</dd><dt>Start trigger</dt><dd><code>${esc(A.start_trigger)}</code></dd>
+      <dt>End</dt><dd>${esc(A.end)}</dd><dt>Scheduling</dt><dd>${esc(A.scheduling)}</dd><dt>Creates</dt><dd>${esc(A.ef_template)} event frame</dd></dl>
       <p class="muted" style="font-size:.82rem">${esc(A.note)}</p></div>
     <div class="panel lcard"><div class="eyebrow">Event frame template</div><h3>${esc(EF.name)}</h3><p class="muted" style="font-size:.84rem">${esc(EF.desc)}</p>
       <dl><dt>Naming</dt><dd><code>${esc(EF.naming)}</code></dd></dl>
-      <table><thead><tr><th>Attribute</th><th>From</th><th>UOM</th></tr></thead><tbody>${EF.attrs.map(a => `<tr><td>${esc(a.name)}</td><td>${esc(a.source)} · ${esc(a.method)}</td><td>${esc(a.uom || "")}</td></tr>`).join("")}</tbody></table></div>
+      <table><thead><tr><th>Attribute</th><th>From the well</th><th>UOM</th></tr></thead><tbody>${EF.attrs.map(a => `<tr><td>${esc(a.name)}</td><td>${esc(a.source)} · ${esc(a.method)}</td><td>${esc(a.uom || "")}</td></tr>`).join("")}</tbody></table></div>
+    <div class="panel lcard"><div class="eyebrow">Rollup analyses</div><h3>${RU.length} rollup templates</h3>
+      <table><thead><tr><th>On template</th><th>Sum of child</th><th>Writes to</th></tr></thead><tbody>${RU.map(r => `<tr><td>${esc(r.template)}</td><td>${esc(r.input)}</td><td>${esc(r.output)}</td></tr>`).join("")}</tbody></table>
+      <p class="muted" style="font-size:.82rem">Outputs are PI points written by PI Analysis Service. The simulator never writes them.</p></div>
     <div class="panel lcard"><div class="eyebrow">Notification rule template</div><h3>${esc(N.name)}</h3>
-      <dl><dt>On template</dt><dd>${esc(N.template)}</dd><dt>Criteria</dt><dd>${esc(N.criteria)}</dd><dt>Triggers</dt><dd>${N.triggers.map(esc).join(", ")}</dd><dt>Subscribers</dt><dd>${esc(N.subscribers)}</dd></dl>
+      <dl><dt>On template</dt><dd>${esc(N.template)}</dd><dt>Criteria</dt><dd><code>${esc(N.criteria)}</code></dd><dt>Triggers</dt><dd>${N.triggers.map(esc).join(", ")}</dd><dt>Subscribers</dt><dd>${esc(N.subscribers)}</dd></dl>
       <div class="muted" style="font-size:.8rem">Message content</div><ul>${N.content.map(c => `<li>${esc(c)}</li>`).join("")}</ul></div>`;
 
   // ---- enums
