@@ -55,13 +55,15 @@ class Builder:
             p += f";engunits={a['uom']}"
         return p
 
+    def server(self):
+        """Server comes from the top-level element's 'PI Server' attribute."""
+        return f"%@\\{self.m['root']['name']}|PI Server%"
+
     def template_config(self, a):
-        cfg = f"\\\\%Server%\\%@Tag Prefix%.{a['tag']}"
-        return cfg if a["src"] == "ref" else cfg + self.point_params(a)
+        return f"\\\\{self.server()}\\%@Tag Prefix%.{a['tag']}" + self.point_params(a)
 
     def element_config(self, node, a):
-        cfg = f"\\\\%Server%\\{node['tag_prefix']}.{a['tag']}"
-        return cfg if a["src"] == "ref" else cfg + self.point_params(a)
+        return f"\\\\{self.server()}\\{node['tag_prefix']}.{a['tag']}" + self.point_params(a)
 
     @staticmethod
     def formula_config(a):

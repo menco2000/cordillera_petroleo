@@ -2,7 +2,7 @@
 
 [piwebapi]
 url = "https://YOUR-PIWEBAPI-SERVER/piwebapi"
-data_server = "YOUR-PI-DATA-ARCHIVE"    # name as shown in PI System Explorer
+data_server = "PISERVER"        # PI Data Archive (same as the AF "PI Server" attribute)
 auth = "kerberos"                       # kerberos | basic | ntlm | anonymous
 username = ""                           # basic / ntlm only, e.g. DOMAIN\\piwriter
 password_env = "PIWEBAPI_PASSWORD"      # password is read from this environment variable

@@ -8,6 +8,7 @@
   "note": "Fictional company for simulation and training purposes."
  },
  "point_source": "L",
+ "pi_server": "PISERVER",
  "stats": {
   "sites": 8,
   "wells": 55,
@@ -167,6 +168,16 @@
    "isa": "Enterprise",
    "desc": "Company level. Rolls up production and refining from all sites.",
    "attrs": [
+    {
+     "name": "PI Server",
+     "kind": "static",
+     "type": "String",
+     "uom": null,
+     "enum": null,
+     "desc": "PI Data Archive used by every PI Point data reference in the database.",
+     "cat": "Configuration",
+     "children": []
+    },
     {
      "name": "Company Name",
      "kind": "static",
@@ -3154,6 +3165,7 @@
    "Description": "Fictional company for simulation and training purposes.",
    "Tag Prefix": "CP.CORP",
    "ISA-95 Level": "Enterprise",
+   "PI Server": "PISERVER",
    "Company Name": "Cordillera Petróleo S.A.",
    "Headquarters City": "Bogotá",
    "Headquarters Country": "Colombia",

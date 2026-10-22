@@ -44,6 +44,9 @@ python docs/build_page.py
 - PI tags are built from the ID: `CP.<SITE>.<ASSET>.<SUFFIX>`, e.g. `CP.BAR.W01.THP`, `CP.BAR.P101.FLOW`.
   Each element stores its prefix in `Tag Prefix`. Template config strings use `%@Tag Prefix%`,
   and each element in the XML also carries its resolved tag name.
+- The PI server comes from the `PI Server` attribute on the top element *Cordillera Petróleo*
+  (`PISERVER`). Every config string starts with `\\%@\Cordillera Petróleo|PI Server%\`,
+  so pointing the whole database at another server is a one-value change.
 - Points use point source `L` (Lab) with `compressing=0`, so every simulated value is kept.
 - Status attributes are Int32 PI points read through AF enumeration sets (Well Status, Unit Status…).
   No PI digital state sets are needed.

@@ -231,7 +231,8 @@ flowchart LR
           <dt>Names</dt><dd>Elements carry human names (<em>Garzas-01</em>, <em>Crude Charge Pump</em>). The asset ID (<em>BAR-W01</em>, <em>BAR-P-101</em>) lives in the <em>Asset ID</em> attribute.</dd>
           <dt>Tag name</dt><dd>Built from the ID: <code>CP.&lt;SITE&gt;.&lt;ASSET&gt;.&lt;SUFFIX&gt;</code>, e.g. <code>CP.BAR.P101.FLOW</code>. Stored in <em>Tag Prefix</em>; templates use <code>%@Tag Prefix%</code>.</dd>
           <dt>Depth</dt><dd>5 levels maximum: Enterprise › Site › Area › Work Center › Work Unit.</dd>
-          <dt>Points</dt><dd>Point source <code>L</code> (Lab), compression off. Status tags are Int32 read through AF enumeration sets.</dd>
+          <dt>Server</dt><dd>All PI Point references read the server from the <em>PI Server</em> attribute on <em>Cordillera Petróleo</em> (<code>PISERVER</code>).</dd>
+          <dt>Points</dt><dd>Every PI Point reference carries its creation settings: point source <code>L</code> (Lab), compression off, point type and engineering units. Status tags are Int32 read through AF enumeration sets.</dd>
           <dt>Units</dt><dd>Oilfield units: psig/psia, bbl/d, Mscf/d, °F. Units missing from the default AF UOM database (Mscf/d, lb/h, spm…) live in the PI point and attribute description.</dd>
           <dt>Rollups</dt><dd>Field totals, tank farm inventory and company totals are Rollup analyses.</dd>
           <dt>ISA-88 use</dt><dd>ISA-88 is a batch standard and a refinery runs continuously. So we use its physical model names, and the <em>Extraction Run</em> event frame is the record of each production run.</dd>

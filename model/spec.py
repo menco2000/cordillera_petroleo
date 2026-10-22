@@ -20,6 +20,7 @@ from pathlib import Path
 SEED = 20261021
 MAX_DEPTH = 5
 POINT_SOURCE = "L"  # Lab point source
+PI_SERVER = "PISERVER"  # PI Data Archive / AF server used by every PI Point data reference
 COMPANY = {
     "name": "Cordillera Petróleo S.A.",
     "code": "CP",
@@ -110,6 +111,8 @@ template("Asset Base", None, None,
          ], "Base")
 
 template("Enterprise", "Asset Base", "Enterprise", "Company level. Rolls up production and refining from all sites.", [
+    S("PI Server", desc="PI Data Archive used by every PI Point data reference in the database.",
+      cat="Configuration"),
     S("Company Name"),
     S("Headquarters City"),
     S("Headquarters Country"),
@@ -794,7 +797,7 @@ def build():
     rng = random.Random(SEED)
     sites = [make_site(rng, s) for s in SITES]
     root = el("Cordillera Petróleo", "Enterprise", COMPANY["note"], "CP", "CP.CORP",
-              {"Company Name": COMPANY["name"], "Headquarters City": COMPANY["hq_city"],
+              {"PI Server": PI_SERVER, "Company Name": COMPANY["name"], "Headquarters City": COMPANY["hq_city"],
                "Headquarters Country": COMPANY["hq_country"], "Number of Sites": len(sites)},
               sites, isa="Enterprise")
 
@@ -825,6 +828,7 @@ def build():
         "database": "Cordillera Petroleo",
         "company": COMPANY,
         "point_source": POINT_SOURCE,
+        "pi_server": PI_SERVER,
         "stats": stats,
         "af_uom": AF_UOM,
         "enums": ENUMS,
