@@ -48,10 +48,10 @@ class PIWebAPI:
             urllib3.disable_warnings()
         self._server_id = None
 
-    def _get(self, path, **params):
-        r = self.s.get(f"{self.base}/{path}", params=params, timeout=self.timeout)
+    def _get(self, endpoint, **params):
+        r = self.s.get(f"{self.base}/{endpoint}", params=params, timeout=self.timeout)
         if r.status_code >= 400:
-            raise PIWebAPIError(f"GET {path} -> {r.status_code}: {r.text[:400]}")
+            raise PIWebAPIError(f"GET {endpoint} -> {r.status_code}: {r.text[:400]}")
         return r.json()
 
     def server_id(self):
