@@ -7,6 +7,7 @@
 Writes
   dashboard/data/model.js  sites, wells and AF element paths from model/model.json
   dashboard/data/map.js    country outlines, offline fallback for the satellite map (Natural Earth 1:50m)
+  dashboard/data/plant.js  each site's AF element tree with its PI attributes, for the 3D plant view
   dashboard/data/demo.js   ~90 days of simulator output, used when PI Web API is not reachable
 """
 import argparse
@@ -81,6 +82,53 @@ def build_model(model):
         })
     return {"company": model["company"]["name"], "rootPath": model["root"]["path"],
             "database": model["database"], "enums": model["enums"], "sites": sites}
+
+
+# ---------------------------------------------------------------- plant.js
+# static attributes the 3D view uses for sizing and labels
+PLANT_PROPS = ("Product", "Nominal Capacity", "Max Fill Height", "Diameter", "Design Capacity", "Lift Method",
+               "Number of Trays", "Length", "Location|Latitude", "Location|Longitude", "Service")
+
+
+def template_attrs(model):
+    """template name -> PI Point attributes, inherited ones first: [name, tag suffix, uom, enum set]"""
+    tt = {t["name"]: t for t in model["templates"]}
+    out = {}
+    for name in tt:
+        chain, t = [], tt[name]
+        while t:
+            chain.insert(0, t)
+            t = tt.get(t["base"])
+        seen, attrs = set(), []
+        for t in chain:
+            for a in t["attrs"]:
+                if a["kind"] == "pi" and a["name"] not in seen:
+                    seen.add(a["name"])
+                    attrs.append([a["name"], a["tag"], a["uom"], a["enum"]])
+        out[name] = attrs
+    return out
+
+
+def plant_node(n, attrs):
+    return {"id": n["id"], "name": n["name"], "template": n["template"], "isa": n["isa"], "path": n["path"],
+            "tag": n["tag_prefix"], "desc": n["desc"],
+            "props": {k: n["values"][k] for k in PLANT_PROPS if k in n["values"]},
+            "children": [plant_node(c, attrs) for c in n["children"]]}
+
+
+def build_plant(model):
+    attrs = template_attrs(model)
+    used = set()
+
+    def collect(n):
+        used.add(n["template"])
+        for c in n["children"]:
+            collect(c)
+    sites = {}
+    for s in model["root"]["children"]:
+        collect(s)
+        sites[s["id"]] = plant_node(s, attrs)
+    return {"templates": {k: v for k, v in attrs.items() if k in used}, "sites": sites}
 
 
 # ---------------------------------------------------------------- map.js
@@ -166,6 +214,34 @@ def build_demo(model, days=91, step=300):
         return dt.datetime.fromtimestamp(x, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     v = last
+    tpl_attrs = template_attrs(model)
+
+    def tag_values(node, out):
+        for name, suffix, uom, enum in tpl_attrs[node["template"]]:
+            x = v.get(f"{node['tag_prefix']}.{suffix}")
+            if x is None:
+                continue
+            out[f"{node['tag_prefix']}.{suffix}"] = enums[enum][int(x)] if enum else round(x, 2)
+        for c in node["children"]:
+            tag_values(c, out)
+        return out
+    # rollup outputs are written by AF analyses, not by the simulator: sum the children like AF does
+    rollups = [r for r in model["analyses"] if r["type"] == "Rollup" and r["template"] != "Enterprise"]
+
+    def add_rollups(node, out):
+        for c in node["children"]:
+            add_rollups(c, out)
+        attr_tag = {name: f"{node['tag_prefix']}.{suffix}" for name, suffix, _, _ in tpl_attrs[node["template"]]}
+        for r in rollups:
+            if r["template"] == node["template"] and r["output"] in attr_tag:
+                parts = [out.get(f"{c['tag_prefix']}.{suf}") for c in node["children"]
+                         for name, suf, _, _ in tpl_attrs[c["template"]] if name == r["input"]]
+                out[attr_tag[r["output"]]] = round(sum(x for x in parts if isinstance(x, (int, float))), 2)
+        return out
+
+    def site_tags(node):
+        return add_rollups(node, tag_values(node, {}))
+    site_nodes = {n["id"]: n for n in model["root"]["children"]}
     out_sites = {}
     for s in dm["sites"]:
         c = s["code"]
@@ -202,7 +278,7 @@ def build_demo(model, days=91, step=300):
             "thru": round(v[f"CP.{c}.CDU100.THRU"], 1),
             "producing": sum(1 for x in wells.values() if x["status"] == "Producing"),
             "crudeInv": round(v[f"CP.{c}.TK101.INV"] + v[f"CP.{c}.TK102.INV"]),
-            "wells": wells, "units": units, "events": events[:12],
+            "wells": wells, "units": units, "events": events[:12], "tags": site_tags(site_nodes[c]),
             "trend": {"days": [iso(trend_from + d * DAY)[:10] for d in days_],
                       "oil": [round(daily[(c, "oil")][d][0] / daily[(c, "oil")][d][1]) for d in days_],
                       "thru": [round(daily[(c, "thru")][d][0] / daily[(c, "thru")][d][1]) for d in days_]},
@@ -224,6 +300,7 @@ def main():
     args = ap.parse_args()
     model = load_model()
     write_js("model.js", "CP_MODEL", build_model(model))
+    write_js("plant.js", "CP_PLANT", build_plant(model))
     if args.geojson:
         write_js("map.js", "CP_MAP", build_map(args.geojson))
     if not args.no_demo:

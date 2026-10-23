@@ -47,6 +47,34 @@ the map itself; only the IBM Plex fonts come from Google Fonts, with a system-fo
 
 All designs share `common.js` (data loading, status rules, tooltip content), so the numbers are the same everywhere.
 
+## 3D plant (`plant.html`)
+
+An isometric 3D model of one site, generated from the AF hierarchy: every **Area** is a slab, every
+**unit / work center** a pad on it, and every **equipment element** a model chosen by its AF template
+(tank, column, fired heater, pump, separator, desalter, reactor, compressor, ejector, boiler, cooling
+tower, pipeline, and one model per well lift type). Process areas sit in AF order, which is the flow
+order, with a pipe rack behind them and the utilities behind the rack.
+
+- **Product flow:** pipes run from each well through the separator, pipeline, crude tanks, CDU/VDU and
+  hydrotreater to the product tanks, plus steam, cooling water and recycle gas. Each pipe is colored
+  by product and moves at a speed set by the PI flow attribute that measures it; a grey, still pipe
+  has no flow. Hover a pipe for its product and current flow.
+- **Live state:** the colored bands show status (well status, unit status or equipment run status),
+  tank fills follow *Level*, rod pumps stroke at their *Strokes Per Minute*, cooling tower fans turn
+  when running, heater fireboxes glow when fuel gas is flowing.
+- **Navigation:** drag to rotate, right-drag (two fingers on touch) to pan, scroll or pinch to zoom.
+  Click any element in the model or in the **AF hierarchy** tree to fly to it and see all its PI
+  attributes, configuration and AF path. `Esc` goes up one level, **Reset view** goes back to the
+  standard angle. Links like `plant.html#BAR/BAR-C-101` open a site with an element selected.
+- **Data:** the element tree and PI attributes come from `data/plant.js` (generated from the AF model),
+  values from PI Web API (all PI Point attributes of the site, refreshed every 60 s) or the demo snapshot.
+- Open it from the Topo site view (**View the plant in 3D**). It uses three.js 0.170 (bundled in
+  `vendor/three`, MIT license) as ES modules, so serve the folder over HTTP (IIS or
+  `python -m http.server`); opening the file directly from disk won't work.
+
+Set `piVision.elementDisplay` in `config.js` to an asset-relative PI Vision display to make
+**Open in PI Vision** open the selected element; otherwise it uses `siteDisplay` or the home page.
+
 ## PI Vision links
 
 **Open in PI Vision** goes to `piVision.home` in `config.js`. To open an asset-relative display for the
@@ -69,6 +97,7 @@ but some uses need an ArcGIS account.
 topo.html, topo.js     Topo design (landing page)
 build_relief.py        renders img/topo/*.jpg and data/relief.js (terrain base maps)
 map3d.html, map3d.js   3D design
+plant.html, plant.js   3D plant of one site, built from the AF hierarchy (three.js in vendor/three)
 index.html, app.js     Satellite design (Leaflet 1.9.4 bundled in vendor/leaflet, BSD-2 license)
 holo.html, holo.js     Holo 3D design
 hex.html, hex.js       Hex grid design
@@ -80,6 +109,7 @@ data/model.js          sites, wells, AF element paths (generated)
 data/map.js            offline country outlines (generated)
 data/demo.js           simulator snapshot for demos without PI (generated)
 data/relief.js         where each terrain image sits on the map (generated)
+data/plant.js          each site's AF element tree and PI attributes, for the 3D plant (generated)
 build_data.py          regenerates data/*.js after changing model/spec.py
 ```
 

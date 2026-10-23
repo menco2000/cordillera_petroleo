@@ -241,7 +241,8 @@
     if (state.view) {
       const m = SITES[state.view], f = U.siteFigures(state.view);
       t.append(back(), el("h1", {}, `${m.name}, ${m.country}`),
-        el("p", {}, el("b", {}, `${fmt(f.oil)} bbl/d`), ` oil · ${f.producing} of ${f.wells} wells producing`));
+        el("p", {}, el("b", {}, `${fmt(f.oil)} bbl/d`), ` oil · ${f.producing} of ${f.wells} wells producing`),
+        el("a", { class: "plant", href: `plant.html#${state.view}` }, "View the plant in 3D →"));
     } else {
       const T = U.totals(), flagged = T.levels.warning + T.levels.critical;
       t.append(el("h1", {}, "Cordillera Petróleo"),

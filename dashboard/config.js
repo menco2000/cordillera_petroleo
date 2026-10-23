@@ -17,6 +17,8 @@ window.CP_CONFIG = {
     home: "https://PISERVER/PIVision/",
     siteDisplay: "",
     overviewDisplay: "",
+    // used by the 3D plant for the selected element (falls back to siteDisplay)
+    elementDisplay: "",
   },
   map: {
     // Satellite imagery and place-name overlay (needs internet from the viewer's browser).

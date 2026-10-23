@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cordillera 3D Plant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: the site's plant fills the screen as an isometric 3D model built from the AF hierarchy
+   (areas -> units -> equipment). The AF tree is on the left, the selected element's live PI values on
+   the right; on phones both are sheets. Illustration style: light fills, dark outlines, no glow. */
+:root {
+  color-scheme: light;
+  --bg: #e6f5ee;
+  --ink: #1f2d3a;
+  --ink-2: #3c4c5a;
+  --muted: #5d6e7e;
+  --panel: #ffffff;
+  --line: #c9d6d0;
+  --sel: #e9f8e1;
+  --good: #3f9d1c;
+  --warning: #c77700;
+  --critical: #d03b3b;
+  --planned: #7a8894;
+  --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); overflow: hidden; }
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+#labels { position: fixed; inset: 0; pointer-events: none; }
+/* keeps the title readable over the model */
+body::before { content: ""; position: fixed; left: 0; right: 0; top: 0; height: 120px; z-index: 1; pointer-events: none; background: linear-gradient(180deg, rgba(230,245,238,.96) 55%, rgba(230,245,238,0)); }
+.lab { font-size: 11px; font-weight: 600; color: var(--ink); white-space: nowrap; pointer-events: none; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 6px #fff; transition: opacity .15s; }
+.lab.area { font-size: 13px; font-weight: 700; padding: 3px 8px; background: #fff; border: 1px solid var(--ink); text-shadow: none; }
+.lab.wc { font-size: 11px; color: var(--ink-2); text-transform: none; }
+.lab.eq { font-size: 11px; }
+.lab.eq.on { padding: 2px 7px; background: var(--ink); color: #fff; text-shadow: none; }
+.lab.dim { opacity: 0; }
+.lab small { display: block; font-family: var(--mono); font-weight: 500; font-size: 10px; color: var(--ink-2); }
+.lab.eq.on small { color: #d8e2ea; }
+
+header.top { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); left: max(18px, env(safe-area-inset-left, 0px)); right: max(18px, env(safe-area-inset-right, 0px)); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; pointer-events: none; z-index: 3; }
+header.top > * { pointer-events: auto; }
+.title { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.title .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.title a.back { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--ink-2); text-decoration: none; min-height: 28px; }
+.title a.back:hover { color: var(--ink); text-decoration: underline; }
+.title h1 { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.15; }
+.title select { font: inherit; font-size: 13px; font-weight: 600; color: var(--ink); background: #fff; border: 1px solid var(--ink); border-radius: 6px; padding: 5px 8px; min-height: 32px; }
+.crumbs { font-size: 12px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 2px 4px; align-items: center; }
+.crumbs button { font: inherit; color: inherit; background: none; border: 0; padding: 2px 0; cursor: pointer; }
+.crumbs button:hover { color: var(--ink); text-decoration: underline; }
+.crumbs button:last-child { color: var(--ink); font-weight: 600; }
+.crumbs span { color: var(--muted); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.btn { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 8px 13px; border-radius: 6px; background: #fff; border: 1.5px solid var(--ink); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.btn:hover { background: var(--ink); color: #fff; }
+.btn svg { width: 13px; height: 13px; }
+#treeBtn { display: none; }
+
+aside.panel { position: fixed; z-index: 2; background: var(--panel); border: 1px solid var(--ink); display: flex; flex-direction: column; overflow: hidden; }
+aside.panel .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--ink-2); }
+aside.panel .head button { font: inherit; font-size: 18px; line-height: 1; background: none; border: 0; color: var(--ink-2); cursor: pointer; padding: 0 4px; min-width: 32px; min-height: 32px; }
+aside.panel .body { overflow: auto; padding: 6px 0 10px; }
+#tree { left: max(18px, env(safe-area-inset-left, 0px)); top: 132px; bottom: 76px; width: 268px; }
+#tree ul { list-style: none; margin: 0; padding: 0 0 0 12px; }
+#tree > .body > ul { padding-left: 4px; }
+#tree li > div { display: flex; align-items: center; }
+#tree .tw { width: 22px; height: 26px; flex: none; background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 10px; padding: 0; }
+#tree .tw:disabled { cursor: default; }
+#tree .nm { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; text-align: left; font: inherit; font-size: 13px; color: var(--ink); background: none; border: 0; padding: 4px 6px; border-radius: 4px; cursor: pointer; overflow: hidden; }
+#tree .nm span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#tree .nm:hover { background: #f1f6f3; }
+#tree .nm.on { background: var(--sel); font-weight: 600; box-shadow: inset 2px 0 0 var(--ink); }
+#tree .nm i { width: 8px; height: 8px; border-radius: 50%; flex: none; background: transparent; }
+#tree li.closed > ul { display: none; }
+
+#info { right: max(18px, env(safe-area-inset-right, 0px)); top: 132px; width: 312px; max-height: calc(100% - 208px); }
+#info h2 { margin: 0 0 2px; font-size: 17px; font-weight: 700; }
+#info .meta { font-size: 12px; color: var(--muted); }
+#info .sec { padding: 10px 14px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; }
+#info .sec:last-child { border-bottom: 0; }
+#info .sec h3 { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+#info table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+#info td { padding: 3px 0; vertical-align: top; }
+#info td:first-child { color: var(--ink-2); padding-right: 10px; }
+#info td:last-child { text-align: right; font-family: var(--mono); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+#info td small { font-family: var(--font); font-weight: 500; color: var(--muted); }
+#info .kids { display: flex; flex-wrap: wrap; gap: 6px; }
+#info .kids button { font: inherit; font-size: 12px; background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; cursor: pointer; color: var(--ink); }
+#info .kids button:hover { border-color: var(--ink); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+.pill i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+footer.bottom { position: fixed; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); left: max(18px, env(safe-area-inset-left, 0px)); right: max(18px, env(safe-area-inset-right, 0px)); display: flex; align-items: flex-end; justify-content: space-between; gap: 10px 18px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); pointer-events: none; z-index: 1; }
+footer.bottom > * { pointer-events: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; max-width: 760px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 18px; height: 6px; border-radius: 3px; display: inline-block; border: 1px solid rgba(31,45,58,.5); }
+.right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+.hint { color: var(--muted); }
+#asof { font-family: var(--mono); }
+#tip { position: fixed; z-index: 10; pointer-events: none; background: #fff; border: 1px solid var(--ink); padding: 7px 10px; font-size: 12px; max-width: 260px; }
+#tip b { display: block; font-size: 13px; }
+#tip span { font-family: var(--mono); }
+#err { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #fff; border: 1px solid var(--ink); padding: 14px 18px; max-width: 420px; font-size: 14px; z-index: 20; }
+
+@media (max-width: 900px) {
+  #tree { top: auto; bottom: 0; left: 0; right: 0; width: auto; max-height: 55%; border-width: 1px 0 0; z-index: 4; }
+  #tree:not(.open) { display: none; }
+  #treeBtn { display: inline-flex; }
+  #info { top: auto; bottom: 0; left: 0; right: 0; width: auto; max-height: 46%; border-width: 1px 0 0; z-index: 4; }
+  .hint { display: none; }
+}
+@media (max-width: 640px) {
+  header.top { flex-direction: column; gap: 8px; }
+  .title h1 { font-size: 18px; }
+  .crumbs { display: none; }
+  .btn { min-height: 40px; padding: 8px 11px; font-size: 12.5px; }
+  .legend { gap: 4px 10px; font-size: 11px; }
+  .legend i { width: 14px; }
+}
+</style>
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js" } }</script>
+</head>
+<body>
+<canvas id="scene" tabindex="0" aria-label="3D model of the site's plant. Drag to rotate, scroll or pinch to zoom, right-drag or two fingers to pan."></canvas>
+<div id="labels"></div>
+<header class="top">
+  <div class="title">
+    <div class="row"><a class="back" id="back" href="topo.html"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M9 3 5 7l4 4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>Map</a>
+      <label><span hidden>Site</span><select id="site" aria-label="Site"></select></label></div>
+    <h1 id="h1">Plant</h1>
+    <nav class="crumbs" id="crumbs" aria-label="AF path"></nav>
+  </div>
+  <div class="actions">
+    <button class="btn" id="treeBtn" type="button" aria-controls="tree">Hierarchy</button>
+    <button class="btn" id="reset" type="button">Reset view</button>
+    <a class="btn" id="pv" target="_blank" rel="noopener" hidden>Open in PI Vision <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M4 10 10 4M5 4h5v5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg></a>
+  </div>
+</header>
+<aside class="panel" id="tree" aria-label="AF hierarchy"><div class="head">AF hierarchy <button type="button" id="treeClose" aria-label="Close hierarchy">×</button></div><div class="body" id="treeBody"></div></aside>
+<aside class="panel" id="info" aria-live="polite" hidden><div class="head"><span id="infoKind">Element</span><button type="button" id="infoClose" aria-label="Close details">×</button></div><div class="body" id="infoBody"></div></aside>
+<footer class="bottom"><div class="legend" id="legend"></div><div class="right"><span class="hint">Drag to rotate · right-drag to pan · scroll to zoom · click to select</span><span id="asof"></span></div></footer>
+<div id="tip" hidden></div>
+<div id="err" hidden></div>
+
+<script src="config.js"></script>
+<script src="data/model.js"></script>
+<script src="data/demo.js"></script>
+<script src="data/plant.js"></script>
+<script src="source.js"></script>
+<script src="common.js"></script>
+<script type="module" src="plant.js"></script>
+</body>
+</html>

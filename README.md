@@ -152,4 +152,6 @@ kept in the PI point `engunits` and the attribute description, not as AF UOMs.
 map with oil production drawn live as colored contour bands. Hover a site, well or refinery for its
 key figures; click a site to zoom to its wellfield. Trends and tables are meant for PI Vision.
 It reads AF through PI Web API and falls back to bundled demo data when PI Web API can't be reached.
+`plant.html` is a navigable 3D model of each site built from the AF hierarchy, with live product flows
+from the wells to the product tanks.
 Setup (hosting, CORS, authentication): `dashboard/README.md`.

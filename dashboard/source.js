@@ -12,6 +12,8 @@
     return {
       name: "demo",
       async snapshot() { return { asOf: D.asOf, live: false, sites: structuredClone(D.sites) }; },
+      // every PI attribute of one site, keyed by PI tag (used by the 3D plant view)
+      async tagValues(code) { return { asOf: D.asOf, live: false, values: { ...D.sites[code].tags } }; },
     };
   }
 
@@ -94,8 +96,23 @@
       }
     }
 
+    // all PI Point attributes under one site, from data/plant.js: [tag, AF attribute path]
+    function sitePlan(code) {
+      const P = window.CP_PLANT, out = [];
+      const walk = n => {
+        for (const [attr, suffix] of P.templates[n.template] || []) out.push([`${n.tag}.${suffix}`, attrPath(n.path, attr)]);
+        n.children.forEach(walk);
+      };
+      walk(P.sites[code]);
+      return out;
+    }
+
     return {
       name: "piwebapi",
+      async tagValues(code) {
+        const plan = sitePlan(code), vals = await currentValues(plan.map(p => p[1]));
+        return { asOf: new Date().toISOString(), live: true, values: Object.fromEntries(plan.map(([tag, path]) => [tag, vals[path]])) };
+      },
       async snapshot() {
         if (!dbWebId) {   // one cheap request first, so an unreachable server fails fast
           dbWebId = (await get("assetdatabases", { path: `\\\\${cfg.afServer}\\${M.database}`, selectedFields: "WebId" })).WebId;
