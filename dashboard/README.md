@@ -72,6 +72,14 @@ order, with a pipe rack behind them and the utilities behind the rack.
   `vendor/three`, MIT license) as ES modules, so serve the folder over HTTP (IIS or
   `python -m http.server`); opening the file directly from disk won't work.
 
+**CPU use.** The view only redraws when something changes (camera, data, hover) and each piece of
+equipment is merged into a few draw calls. On a machine without a graphics card, e.g. when it's
+opened on a server VM, the browser renders WebGL on the CPU; the page detects that and switches to
+**low-power mode**: no antialiasing, motion off by default, 4 frames/s when motion is turned on
+(about half a CPU core), capped frame rate while dragging. Use the **Motion** button to toggle the
+flowing pipes and moving equipment; `plant.quality`, `maxFps` and `lowPowerFps` in `config.js` tune it.
+For the smoothest result open the page on a PC with a GPU: the server only serves static files.
+
 Set `piVision.elementDisplay` in `config.js` to an asset-relative PI Vision display to make
 **Open in PI Vision** open the selected element; otherwise it uses `siteDisplay` or the home page.
 

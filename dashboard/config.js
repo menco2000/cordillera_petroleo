@@ -20,6 +20,14 @@ window.CP_CONFIG = {
     // used by the 3D plant for the selected element (falls back to siteDisplay)
     elementDisplay: "",
   },
+  plant: {
+    // 3D plant rendering. "auto" switches to low-power mode when the browser has no graphics card
+    // (e.g. opened on a server VM): no antialiasing, motion off by default, 4 frames/s when it's on.
+    // "low" forces that mode, "high" disables it.
+    quality: "auto",
+    maxFps: 30,
+    lowPowerFps: 4,
+  },
   map: {
     // Satellite imagery and place-name overlay (needs internet from the viewer's browser).
     // If the imagery can't load, the map falls back to offline country outlines.

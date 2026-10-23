@@ -66,7 +66,9 @@ aside.panel { position: fixed; z-index: 2; background: var(--panel); border: 1px
 aside.panel .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--ink-2); }
 aside.panel .head button { font: inherit; font-size: 18px; line-height: 1; background: none; border: 0; color: var(--ink-2); cursor: pointer; padding: 0 4px; min-width: 32px; min-height: 32px; }
 aside.panel .body { overflow: auto; padding: 6px 0 10px; }
-#tree { left: max(18px, env(safe-area-inset-left, 0px)); top: 132px; bottom: 76px; width: 268px; }
+.btn.small { min-height: 30px; padding: 4px 10px; font-size: 12px; border-width: 1px; }
+#lowpower { font-weight: 600; color: var(--warning); }
+#tree { left: max(18px, env(safe-area-inset-left, 0px)); top: 132px; bottom: 112px; width: 268px; }
 #tree ul { list-style: none; margin: 0; padding: 0 0 0 12px; }
 #tree > .body > ul { padding-left: 4px; }
 #tree li > div { display: flex; align-items: center; }
@@ -79,7 +81,7 @@ aside.panel .body { overflow: auto; padding: 6px 0 10px; }
 #tree .nm i { width: 8px; height: 8px; border-radius: 50%; flex: none; background: transparent; }
 #tree li.closed > ul { display: none; }
 
-#info { right: max(18px, env(safe-area-inset-right, 0px)); top: 132px; width: 312px; max-height: calc(100% - 208px); }
+#info { right: max(18px, env(safe-area-inset-right, 0px)); top: 132px; width: 312px; max-height: calc(100% - 244px); }
 #info h2 { margin: 0 0 2px; font-size: 17px; font-weight: 700; }
 #info .meta { font-size: 12px; color: var(--muted); }
 #info .sec { padding: 10px 14px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; }
@@ -145,7 +147,7 @@ footer.bottom > * { pointer-events: auto; }
 </header>
 <aside class="panel" id="tree" aria-label="AF hierarchy"><div class="head">AF hierarchy <button type="button" id="treeClose" aria-label="Close hierarchy">×</button></div><div class="body" id="treeBody"></div></aside>
 <aside class="panel" id="info" aria-live="polite" hidden><div class="head"><span id="infoKind">Element</span><button type="button" id="infoClose" aria-label="Close details">×</button></div><div class="body" id="infoBody"></div></aside>
-<footer class="bottom"><div class="legend" id="legend"></div><div class="right"><span class="hint">Drag to rotate · right-drag to pan · scroll to zoom · click to select</span><span id="asof"></span></div></footer>
+<footer class="bottom"><div class="legend" id="legend"></div><div class="right"><span class="hint">Drag to rotate · right-drag to pan · scroll to zoom · click to select</span><span id="lowpower" title="No graphics card detected: rendering is simplified to save CPU" hidden>Low-power mode</span><button class="btn small" id="motion" type="button" aria-pressed="true">Motion: on</button><span id="asof"></span></div></footer>
 <div id="tip" hidden></div>
 <div id="err" hidden></div>
 

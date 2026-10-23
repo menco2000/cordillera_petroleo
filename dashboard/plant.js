@@ -3,6 +3,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "./vendor/three/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "./vendor/three/CSS2DRenderer.js";
+import { mergeGeometries } from "./vendor/three/BufferGeometryUtils.js";
 
 const U = window.CP_UI, P = window.CP_PLANT, { M, SITES, CFG, state, el, fmt } = U;
 const $ = id => document.getElementById(id);
@@ -55,9 +56,24 @@ const FLOWS = [
 ];
 
 // ------------------------------------------------------------------ renderer
+// Without a GPU (e.g. a server VM) the browser renders WebGL on the CPU. Detect that and go easy:
+// no antialiasing, 1x pixels, fewer animation frames. config.js plant.quality can force "low" / "high".
+const PCFG = CFG.plant || {};
+function softwareGL() {
+  try {
+    const gl = document.createElement("canvas").getContext("webgl2") || document.createElement("canvas").getContext("webgl");
+    if (!gl) return true;
+    const ext = gl.getExtension("WEBGL_debug_renderer_info");
+    const name = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+    gl.getExtension("WEBGL_lose_context")?.loseContext();
+    return /swiftshader|llvmpipe|softpipe|software|basic render|warp/i.test(String(name));
+  } catch (_) { return false; }
+}
+const LOW = PCFG.quality === "low" || (PCFG.quality !== "high" && softwareGL());
+const ANIM_FPS = LOW ? (PCFG.lowPowerFps ?? 4) : (PCFG.maxFps ?? 30);
 const canvas = $("scene");
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !LOW, powerPreference: LOW ? "low-power" : "default" });
+renderer.setPixelRatio(LOW ? 1 : Math.min(2, window.devicePixelRatio || 1));
 renderer.setClearColor(COL.bg);
 const labelRenderer = new CSS2DRenderer({ element: $("labels") });
 const scene = new THREE.Scene();
@@ -70,7 +86,13 @@ const viewDir = () => (window.innerWidth / window.innerHeight < 0.8 ? new THREE.
 const controls = new OrbitControls(camera, canvas);
 Object.assign(controls, { enableDamping: true, dampingFactor: 0.12, minZoom: 0.08, maxZoom: 14, maxPolarAngle: 1.4, screenSpacePanning: true, zoomToCursor: true });
 
+// draw only when something changed: camera moves, data arrives, hover, or an animation frame is due
+let needsRender = true, needsLabels = true;
+const invalidate = () => { needsRender = true; needsLabels = true; };
+controls.addEventListener("change", invalidate);
+
 function resize() {
+  invalidate();
   const w = window.innerWidth, h = window.innerHeight, a = w / h;
   renderer.setSize(w, h, false); labelRenderer.setSize(w, h);
   camera.left = -FRUSTUM * a / 2; camera.right = FRUSTUM * a / 2; camera.top = FRUSTUM / 2; camera.bottom = -FRUSTUM / 2;
@@ -105,10 +127,47 @@ const outlineMat = new THREE.ShaderMaterial({
 function mesh(geo, material, parent, x = 0, y = 0, z = 0, { edges = true, outline = true } = {}) {
   const m = new THREE.Mesh(geo, material);
   m.position.set(x, y, z);
-  if (outline) m.add(new THREE.Mesh(geo, outlineMat));
-  if (edges) m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), lineMat));
+  m.userData.ol = outline; m.userData.ed = edges;
   parent.add(m);
   return m;
+}
+function decorate(m) {
+  if (m.userData.ol) m.add(new THREE.Mesh(m.geometry, outlineMat));
+  if (m.userData.ed) m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 25), lineMat));
+}
+
+// Merge a model's static parts into one mesh per material, plus one outline mesh and one line set:
+// a few draw calls per piece of equipment instead of dozens. Parts marked dynamic (moving beams,
+// fans, tank fill) stay separate.
+function bake(root) {
+  root.updateMatrixWorld(true);
+  const inv = root.matrixWorld.clone().invert(), byMat = new Map(), ol = [], ed = [], drop = [], dyn = [];
+  const isDynamic = o => { for (let p = o; p && p !== root; p = p.parent) if (p.userData.dynamic) return true; return false; };
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    if (isDynamic(o)) { dyn.push(o); return; }
+    const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+    const t = o.geometry.clone().applyMatrix4(m);
+    if (!byMat.has(o.material)) byMat.set(o.material, []);
+    byMat.get(o.material).push(t);
+    if (o.userData.ol) ol.push(t);
+    if (o.userData.ed) ed.push(new THREE.EdgesGeometry(o.geometry, 25).applyMatrix4(m));
+    drop.push(o);
+  });
+  const merged = [];
+  for (const [material, geos] of byMat) {
+    const g = geos.length > 1 ? mergeGeometries(geos) : geos[0];
+    if (!g) { drop.length = 0; break; }                 // incompatible parts: keep them as they are
+    merged.push(new THREE.Mesh(g, material));
+  }
+  if (!drop.length) { root.traverse(o => { if (o.isMesh) decorate(o); }); return; }
+  drop.forEach(o => o.removeFromParent());
+  merged.forEach(m => root.add(m));
+  const og = ol.length ? mergeGeometries(ol) : null;
+  if (og) root.add(new THREE.Mesh(og, outlineMat));
+  const eg = ed.length ? mergeGeometries(ed) : null;
+  if (eg) root.add(new THREE.LineSegments(eg, lineMat));
+  dyn.forEach(decorate);
 }
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 const cyl = (r, h, s = 24, r2 = r) => new THREE.CylinderGeometry(r2, r, h, s);
@@ -122,9 +181,10 @@ function tank(node) {
   const r = Math.max(2.6, Math.min(6.2, (p.Diameter || 40) * 0.3048 * 0.3));
   const h = Math.max(6, (p["Max Fill Height"] || 48) * 0.3048 * 0.55);
   const prod = PRODUCTS[TANK_PRODUCT[p.Product] || "crude"];
-  mesh(cyl(r, h, 40), mat(COL.body), g, 0, h / 2, 0);
-  const fill = mesh(cyl(r + 0.04, 1, 40), mat(prod.color), g, 0, 0, 0, { outline: false });
-  mesh(cyl(r + 0.1, 0.9, 40, r * 0.12), mat(COL.body2), g, 0, h + 0.45, 0);
+  mesh(cyl(r, h, 28), mat(COL.body), g, 0, h / 2, 0);
+  const fill = mesh(cyl(r + 0.04, 1, 28), mat(prod.color), g, 0, 0, 0, { outline: false });
+  fill.userData.dynamic = true;
+  mesh(cyl(r + 0.1, 0.9, 28, r * 0.12), mat(COL.body2), g, 0, h + 0.45, 0);
   for (let i = 0; i < 10; i++) {                                 // stair up the side
     const a = -0.6 + i * 0.13;
     mesh(box(0.7, 0.08, 0.3), mat(COL.steel), g, Math.sin(a) * (r + 0.4), 0.6 + i * (h - 1) / 10, Math.cos(a) * (r + 0.4), { outline: false });
@@ -233,7 +293,7 @@ function coolingTower(node) {
   for (let y = 1.2; y < 4.4; y += 0.7) mesh(box(9.45, 0.12, 4.05), mat(COL.body2), g, 0, y, 0, { outline: false, edges: false });
   for (const x of [-3.1, 0, 3.1]) {
     mesh(cyl(1.35, 1.2, 28), a, g, x, 5.2, 0);
-    const f = new THREE.Group(); f.position.set(x, 5.85, 0);
+    const f = new THREE.Group(); f.position.set(x, 5.85, 0); f.userData.dynamic = true;
     for (let i = 0; i < 4; i++) { const b = mesh(box(2.2, 0.06, 0.35), mat(COL.dark), f, 0, 0, 0, { outline: false }); b.rotation.y = i * Math.PI / 4; }
     g.add(f); fans.push(f);
   }
@@ -266,11 +326,11 @@ function well(node) {
     const base = -2.6;
     mesh(box(5.5, 0.35, 1.3), mat(COL.dark), g, base + 1.2, 0.3, 0);
     for (const z of [-0.45, 0.45]) { const l = mesh(box(0.22, 3.6, 0.22), mat(COL.dark), g, base + 1.6, 2.2, z, { outline: false }); l.rotation.x = z > 0 ? -0.12 : 0.12; }
-    const beam = new THREE.Group(); beam.position.set(base + 1.6, 3.9, 0); g.add(beam);
+    const beam = new THREE.Group(); beam.position.set(base + 1.6, 3.9, 0); beam.userData.dynamic = true; g.add(beam);
     mesh(box(5.2, 0.38, 0.38), a, beam, 0.6, 0, 0);
     mesh(box(0.5, 1.3, 0.5), mat(COL.body2), beam, 3.25, -0.35, 0);           // horsehead over the well
     mesh(box(0.9, 0.6, 0.6), mat(COL.dark), beam, -2, -0.1, 0);
-    const crank = new THREE.Group(); crank.position.set(base - 0.6, 1.5, 0); g.add(crank);
+    const crank = new THREE.Group(); crank.position.set(base - 0.6, 1.5, 0); crank.userData.dynamic = true; g.add(crank);
     for (const z of [-0.55, 0.55]) mesh(box(1.6, 0.5, 0.18), mat(COL.dark), crank, 0.5, 0, z, { outline: false });
     mesh(box(1.3, 0.9, 1.1), mat(COL.body2), g, base - 1.7, 0.75, 0);         // gearbox + motor
     tick = dt => { if (spm > 0) phase += dt * spm / 60 * Math.PI * 2; beam.rotation.z = Math.sin(phase) * 0.22; crank.rotation.z = -phase; };
@@ -326,7 +386,9 @@ const GAP = 2.6, PAD = 2.6, AREA_GAP = 9, RACK_GAP = 5;
 let site = null;               // current site: { code, root, byId, items, pipes, ... }
 
 function slab(w, d, h, color, parent, x, z, y = 0) {
-  return mesh(box(w, h, d), mat(color), parent, x, y + h / 2, z, { outline: false });
+  const m = mesh(box(w, h, d), mat(color), parent, x, y + h / 2, z, { outline: false });
+  decorate(m);
+  return m;
 }
 
 function layoutWellfield(wc) {
@@ -379,7 +441,7 @@ function buildSite(code) {
   const wrap = (node, depth, parent) => {
     const it = { node, depth, parent, children: [], x: 0, z: 0, w: 0, d: 0 };
     byId[node.id] = it; items.push(it);
-    if (depth >= 3) { it.part = build(node); }
+    if (depth >= 3) { it.part = build(node); bake(it.part.g); }
     it.children = node.children.map(c => wrap(c, depth + 1, it));
     return it;
   };
@@ -429,15 +491,25 @@ function buildSite(code) {
     return base.add(new THREE.Vector3(0, y, face * pt.d / 2 * 0.9));
   };
   let lane = 0;
+  const joints = {};                                  // product -> joint spheres, merged at the end
   const addPipe = (pts, product, flowTag, from, to) => {
-    const curve = new THREE.CurvePath();
-    for (let i = 1; i < pts.length; i++) if (pts[i].distanceTo(pts[i - 1]) > 1e-3) curve.add(new THREE.LineCurve3(pts[i - 1], pts[i]));
-    const len = curve.getLength(), pr = PRODUCTS[product];
-    const tex = flowTexture(pr.color);
-    tex.repeat.set(Math.max(1, len / 2.2), 1);
+    const pr = PRODUCTS[product], tex = flowTexture(pr.color), segs = [];
+    pts = pts.filter((p, i) => !i || p.distanceTo(pts[i - 1]) > 1e-3);
+    let run = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i], len = a.distanceTo(b);
+      // open cylinder along a -> b; texture u = distance along the pipe so the dashes flow continuously
+      const g = new THREE.CylinderGeometry(pr.r, pr.r, len, 8, 1, true), pos = g.attributes.position, uv = g.attributes.uv;
+      for (let k = 0; k < pos.count; k++) uv.setX(k, (run + (pos.getY(k) / len + 0.5) * len) / 2.2);
+      g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize()));
+      g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+      segs.push(g); run += len;
+      if (i < pts.length - 1) (joints[product] ||= []).push(new THREE.SphereGeometry(pr.r * 1.02, 8, 6).translate(b.x, b.y, b.z));
+    }
     const m = new THREE.MeshLambertMaterial({ map: tex });
-    const tube = mesh(new THREE.TubeGeometry(curve, Math.max(8, Math.ceil(len * 3)), pr.r, 8, false), m, pipeGroup, 0, 0, 0, { edges: false });
-    for (let i = 1; i < pts.length - 1; i++) mesh(new THREE.SphereGeometry(pr.r * 1.02, 10, 8), mat(pr.color), pipeGroup, pts[i].x, pts[i].y, pts[i].z, { edges: false });
+    const tube = new THREE.Mesh(mergeGeometries(segs), m);
+    tube.add(new THREE.Mesh(tube.geometry, outlineMat));
+    pipeGroup.add(tube);
     const pipe = { product, flowTag, tex, mat: m, from, to, speed: 0, flow: null };
     tube.userData.pipe = pipe;
     pipes.push(pipe);
@@ -461,12 +533,19 @@ function buildSite(code) {
     const H = 7 + (l % 5) * 0.8;
     addPipe([a, new THREE.Vector3(a.x, a.y, zr), new THREE.Vector3(a.x, H, zr), new THREE.Vector3(b.x, H, zr), new THREE.Vector3(b.x, b.y, zr), b], product, `${src.node.tag}.${attr}`, A, B);
   }
+  for (const [product, geos] of Object.entries(joints)) {
+    const j = new THREE.Mesh(mergeGeometries(geos), mat(PRODUCTS[product].color));
+    j.add(new THREE.Mesh(j.geometry, outlineMat));
+    pipeGroup.add(j);
+  }
   // the rack itself
+  const rack = new THREE.Group();
   const x0 = process[0].x - process[0].w / 2 + 6, x1 = process.at(-1).x + process.at(-1).w / 2 - 4;
   for (let rx = x0; rx <= x1; rx += 8) {
-    for (const z of [rackZ + 2.2, rackZ - 5.6]) mesh(box(0.35, 11, 0.35), mat(COL.steel), group, rx, 5.5, z, { outline: false });
-    for (const y of [6.6, 10.5]) mesh(box(0.3, 0.3, 8.2), mat(COL.steel), group, rx, y, rackZ - 1.7, { outline: false });
+    for (const z of [rackZ + 2.2, rackZ - 5.6]) mesh(box(0.35, 11, 0.35), mat(COL.steel), rack, rx, 5.5, z, { outline: false });
+    for (const y of [6.6, 10.5]) mesh(box(0.3, 0.3, 8.2), mat(COL.steel), rack, rx, y, rackZ - 1.7, { outline: false });
   }
+  bake(rack); group.add(rack);
 
   // ---------------------------------------------------------------- labels
   for (const it of items) {
@@ -520,6 +599,7 @@ function statusOf(it) {
 
 function applyValues() {
   if (!site) return;
+  invalidate();
   for (const it of site.items) {
     if (!it.part) continue;
     const st = statusOf(it);
@@ -591,6 +671,7 @@ function flyTo(b, { instant = false, fill, dir } = {}) {
 }
 function stepFly(now) {
   if (!fly) return;
+  invalidate();
   const p = Math.min(1, (now - fly.t0) / 650), e = p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
   controls.target.lerpVectors(fly.from, fly.to, e);
   fly.offNow.copy(fly.off0).lerp(fly.offset, e).setLength(600);
@@ -625,6 +706,7 @@ const selRing = new THREE.LineLoop(new THREE.BufferGeometry(), new THREE.LineBas
 const hovRing = new THREE.LineLoop(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: COL.hover }));
 scene.add(selRing, hovRing);
 function ring(line, it) {
+  invalidate();
   if (!it || it.depth === 0) { line.visible = false; return; }
   const b = itemBox(it), y = it.depth >= 3 ? 0.85 : it.depth === 2 ? 0.84 : 0.55, m = it.depth >= 3 ? 0.5 : 0.2;
   if (it.depth < 3) { b.min.set(it.wx - it.w / 2, 0, it.wz - it.d / 2); b.max.set(it.wx + it.w / 2, 0, it.wz + it.d / 2); }
@@ -783,18 +865,33 @@ function openSite(code, elementId) {
   refresh();
 }
 
-let clock = performance.now();
+// Motion (flowing pipes, pumpjacks, fans) can be switched off; it's off by default in low-power mode.
+let motion = !LOW;
+try { const m = localStorage.getItem("cp.plant.motion"); if (m) motion = m === "on"; } catch (_) { /* no storage */ }
+function setMotion(on) {
+  motion = on; invalidate();
+  const b = $("motion"); b.textContent = `Motion: ${on ? "on" : "off"}`; b.setAttribute("aria-pressed", String(on));
+  try { localStorage.setItem("cp.plant.motion", on ? "on" : "off"); } catch (_) { /* no storage */ }
+}
+
+let lastAnim = 0, lastRender = 0;
+const MIN_FRAME = LOW ? 1000 / 24 : 0;                // low-power: at most 24 frames/s even while dragging
 function loop(now) {
-  const dt = Math.min(0.1, (now - clock) / 1000); clock = now;
   stepFly(now);
-  controls.update();
-  if (site) {
-    for (const p of site.pipes) if (p.speed) p.tex.offset.x -= dt * p.speed;
+  controls.update();                                  // fires "change" while the camera moves
+  if (site && motion && now - lastAnim >= 1000 / ANIM_FPS) {
+    const dt = lastAnim ? Math.min(0.5, (now - lastAnim) / 1000) : 0;
+    lastAnim = now;
+    let moving = false;
+    for (const p of site.pipes) if (p.speed) { p.tex.offset.x -= dt * p.speed; moving = true; }
     for (const t of site.ticks) t(dt);
-    updateLabels();
+    if (moving || site.ticks.length) needsRender = true;
   }
-  renderer.render(scene, camera);
-  labelRenderer.render(scene, camera);
+  if (needsRender && now - lastRender >= MIN_FRAME) {
+    needsRender = false; lastRender = now;
+    renderer.render(scene, camera);
+    if (needsLabels) { needsLabels = false; updateLabels(); labelRenderer.render(scene, camera); }   // DOM work: only when the view changed
+  }
   requestAnimationFrame(loop);
 }
 
@@ -802,6 +899,9 @@ async function main() {
   try { await U.load(); } catch (e) { $("err").hidden = false; $("err").textContent = `Could not load data: ${e.message}`; return; }
   $("site").replaceChildren(...M.sites.map(s => el("option", { value: s.code }, `${s.name}, ${s.country}`)));
   $("site").addEventListener("change", e => openSite(e.target.value));
+  $("motion").addEventListener("click", () => setMotion(!motion));
+  setMotion(motion);
+  $("lowpower").hidden = !LOW;
   $("reset").addEventListener("click", () => { select(null, { fly: false }); homeView(false); });
   $("infoClose").addEventListener("click", () => select(null, { fly: false }));
   $("treeBtn").addEventListener("click", () => $("tree").classList.toggle("open"));
