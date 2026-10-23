@@ -89,7 +89,7 @@
     let [x0, y0] = pts[0], x1 = x0, y1 = y0;
     for (const [x, y] of pts) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
     const pad = Math.max(x1 - x0, y1 - y0) * 0.35 + 0.05;
-    return [x0 - pad * 1.6, y0 - pad, x1 - x0 + pad * 2.6, y1 - y0 + pad * 2];   // room on the left for the stats column
+    return [x0 - pad, y0 - pad * 1.4, x1 - x0 + pad * 2.4, y1 - y0 + pad * 2.6];   // room on the right and top for chips
   }
   function drawSite(code) {
     const m = SITES[code], s = state.data.sites[code], [bx, by, bw, bh] = siteBox(code);
@@ -150,7 +150,7 @@
     if (!state.view) {
       for (const m of M.sites) {
         const st = U.siteStatus(m.code).level, f = U.siteFigures(m.code);
-        const c = chip("site", st, "refinery", m.name, `${fmt(f.oil)} bbl/d`, () => U.siteTip(m.code), () => openSite(m.code), `${m.name}, ${LEVEL[st].label}, ${fmt(f.oil)} barrels per day`);
+        const c = chip("site", st, "refinery", m.name, `${fmt(f.oil)} bbl/d`, () => U.briefSite(m.code, "Click to see the wells"), () => openSite(m.code), `${m.name}, ${LEVEL[st].label}, ${fmt(f.oil)} barrels per day`);
         const stem = el("div", { class: "stem" });
         box.append(stem, c); chips.push({ c, stem, lat: m.lat, lon: m.lon });
       }
@@ -158,12 +158,12 @@
       const m = SITES[state.view], s = state.data.sites[state.view];
       for (const w of m.wells) {
         const v = s.wells[w.id], lv = WELL_LEVEL[v.status] || "planned";
-        const c = chip("well", lv, "well", w.name, `${fmt(v.oil)} bbl/d`, () => U.wellTip(state.view, w.id), null, `${w.name}, ${v.status}`);
+        const c = chip("well", lv, "well", w.name, `${fmt(v.oil)} bbl/d`, () => U.briefWell(state.view, w.id), null, `${w.name}, ${v.status}`);
         const stem = el("div", { class: "stem" });
         box.append(stem, c); chips.push({ c, stem, lat: w.lat, lon: w.lon });
       }
       const st = U.siteStatus(state.view).level;
-      const c = chip("site", st, "refinery", `${m.name} refinery`, `${fmt(s.thru)} bbl/d`, () => U.refineryTip(state.view), null, `${m.name} refinery`);
+      const c = chip("site", st, "refinery", "Refinery", `${fmt(s.thru)} bbl/d`, () => U.briefRefinery(state.view), null, `${m.name} refinery`);
       const stem = el("div", { class: "stem" });
       box.append(stem, c); chips.push({ c, stem, lat: m.lat, lon: m.lon });
     }
@@ -175,78 +175,70 @@
     for (const { ch, p } of items) {
       const w = ch.c.offsetWidth || 140, h = ch.c.offsetHeight || 46;
       let x = p[0] + 8, y = p[1] - 14;                                   // chip bottom-left corner
+      const minY = h + (window.innerWidth < 640 ? 150 : 96);              // below the header
       const hit = () => placed.find(r => x < r[0] + r[2] + 6 && x + w + 6 > r[0] && y - h < r[1] + 6 && y + 6 > r[1] - r[3]);
-      for (let i = 0, r; i < 14 && (r = hit()) && r[1] - r[3] - 8 >= h + 12; i++) y = r[1] - r[3] - 8;   // stack upwards
-      if (y < h + 12) y = h + 12;                                                                            // stay on screen
+      for (let i = 0, r; i < 14 && (r = hit()) && r[1] - r[3] - 8 >= minY; i++) y = r[1] - r[3] - 8;     // stack upwards
+      if (y < minY) y = minY;                                                                                // stay below the header
       for (let i = 0, r; i < 14 && (r = hit()); i++) x = r[0] + r[2] + 8;                                    // then slide right
+      if (x + w > window.innerWidth - 8) {                                                                   // no room: put it left of the point
+        x = p[0] - w - 8;
+        for (let i = 0, r; i < 14 && (r = hit()); i++) x = r[0] - w - 8;
+      }
+      x = Math.max(8, x);
       placed.push([x, y, w, h]);
       ch.c.style.left = `${x}px`; ch.c.style.top = `${y}px`;
       Object.assign(ch.stem.style, { left: `${p[0]}px`, top: `${y - 4}px`, height: `${Math.max(0, p[1] - y + 4)}px` });
     }
   }
 
-  // ---------------------------------------------------------------- side figures
-  function renderStats() {
-    const S = $("stats"), B = $("bottom"); S.replaceChildren(); B.replaceChildren();
-    const seg = parts => el("div", { class: "seg" }, parts.filter(p => p[1] > 0).map(([c, n]) => el("i", { style: `flex:${n};background:${c}` })));
-    const row = (color, name, value, share) => el("div", { class: "row" }, el("i", { class: "d", style: `background:${color}` }),
-      el("span", { class: "n" }, name), el("span", { class: "v" }, value), el("span", { class: "p" }, share));
-    const big = (label, value, unit) => el("div", {}, el("span", {}, label), el("b", {}, value, unit ? el("small", {}, unit) : null));
-    if (!state.view) {
-      const T = U.totals();
-      S.append(el("h1", {}, "Production overview"), el("div", { class: "lbl" }, "Oil production"),
-        el("div", { class: "hero" }, fmt(T.oil), el("small", {}, "bbl/d")),
-        el("div", { class: "sec" }, "Site status"),
-        seg([[HUE.good, T.levels.good], [HUE.warning, T.levels.warning], [HUE.critical, T.levels.critical]]),
-        el("div", { class: "rows" }, [...M.sites].sort((a, b) => U.siteFigures(b.code).oil - U.siteFigures(a.code).oil).map(m =>
-          row(HUE[U.siteStatus(m.code).level], m.name, fmt(U.siteFigures(m.code).oil), `${fmt(100 * U.siteFigures(m.code).oil / T.oil)}%`))));
-      B.append(big("Refinery throughput", fmt(T.thru), "bbl/d"), big("Utilization", fmt(T.util), "%"),
-        big("Wells producing", `${T.producing}`, `of ${T.wells}`), big("Water cut", fmt(T.wc, 1), "%"));
+  // ---------------------------------------------------------------- chrome
+  function renderChrome() {
+    const t = $("title"); t.replaceChildren();
+    const pv = $("pv"), url = U.piVisionUrl(state.view);
+    if (state.view) {
+      const m = SITES[state.view], f = U.siteFigures(state.view), st = U.siteStatus(state.view);
+      t.append(el("button", { type: "button", onclick: closeSite }, "← ALL SITES"), el("h1", {}, m.name),
+        el("p", {}, el("b", {}, `${fmt(f.oil)} bbl/d`), ` oil · ${f.producing} of ${f.wells} wells producing · ${LEVEL[st.level].label}`));
     } else {
-      const m = SITES[state.view], s = state.data.sites[state.view], f = U.siteFigures(state.view);
-      const counts = { good: 0, warning: 0, critical: 0, planned: 0 };
-      Object.values(s.wells).forEach(v => counts[WELL_LEVEL[v.status] || "planned"]++);
-      S.append(el("h1", {}, m.name), el("div", { class: "lbl" }, "Oil production", el("button", { type: "button", onclick: closeSite }, "← All sites")),
-        el("div", { class: "hero" }, fmt(f.oil), el("small", {}, "bbl/d")),
-        el("div", { class: "sec" }, "Wells"),
-        seg([[HUE.good, counts.good], [HUE.warning, counts.warning], [HUE.critical, counts.critical], [HUE.planned, counts.planned]]),
-        el("div", { class: "rows" }, [...m.wells].sort((a, b) => (s.wells[b.id].oil || 0) - (s.wells[a.id].oil || 0)).map(w =>
-          row(HUE[WELL_LEVEL[s.wells[w.id].status] || "planned"], `${w.name} · ${s.wells[w.id].status}`, fmt(s.wells[w.id].oil), `${fmt(100 * (s.wells[w.id].oil || 0) / Math.max(1, f.oil))}%`))));
-      B.append(big("Refinery throughput", fmt(f.thru), "bbl/d"), big("Utilization", fmt(f.util), "%"),
-        big("Crude stock", f.crudeDays == null ? "—" : fmt(f.crudeDays, 1), "days"), big("Water cut", f.wc == null ? "—" : fmt(f.wc, 1), "%"));
+      const T = U.totals(), flagged = T.levels.warning + T.levels.critical;
+      t.append(el("h1", {}, "Cordillera Petróleo"),
+        el("p", {}, el("b", {}, `${fmt(T.oil)} bbl/d`), ` oil · ${flagged ? `${flagged} of ${M.sites.length} sites need attention` : "all sites normal"}`));
     }
+    pv.hidden = !url; if (url) pv.href = url;
+    const item = (hue, txt) => el("span", {}, el("i", { style: `background:${HUE[hue]}` }), txt);
+    $("legend").replaceChildren(...(state.view
+      ? [item("good", "Producing"), item("warning", "Starting up"), item("critical", "Tripped"), item("planned", "Stopped")]
+      : [item("good", "Normal"), item("warning", "Watch"), item("critical", "Alert")]));
+    $("asof").textContent = U.asOfText();
   }
 
   // ---------------------------------------------------------------- navigation
-  const continentBox = () => { const W = svg.clientWidth; return W > 900 ? [CONT[0] - CONT[2] * .32, CONT[1] - 7, CONT[2] * 1.45, CONT[3] + 11] : [CONT[0], CONT[1] - 12, CONT[2], CONT[3] + 14]; };
+  const continentBox = () => svg.clientWidth > 640 ? [CONT[0] - 3, CONT[1] - 8, CONT[2] + 12, CONT[3] + 14] : [CONT[0] - 1, CONT[1] - 16, CONT[2] + 6, CONT[3] + 24];
   function openSite(code) {
     state.view = code; $("tip").hidden = true;
     try { history.replaceState(null, "", `#${code}`); } catch (_) { /* sandboxed */ }
     drawSite(code); layers.cont.style.opacity = 0;
-    renderStats(); buildChips(); animateTo(siteBox(code));
+    renderChrome(); buildChips(); animateTo(siteBox(code));
   }
   function closeSite() {
     state.view = null; $("tip").hidden = true;
     try { history.replaceState(null, "", location.pathname + location.search); } catch (_) { /* sandboxed */ }
     layers.site.replaceChildren(); layers.arcs.replaceChildren(); layers.cont.style.opacity = 1;
-    renderStats(); buildChips(); animateTo(continentBox());
+    renderChrome(); buildChips(); animateTo(continentBox());
   }
 
   async function main() {
-    const note = t => { $("asof").textContent = t; };
-    try { await U.load(note); } catch (e) { note(`Could not load data: ${e.message}`); return; }
-    const asof = () => { $("asof").textContent = U.asOfText() + ($("asof").dataset.note ? ` · ${$("asof").dataset.note}` : ""); };
-    if (!state.data.live) $("asof").dataset.note = "PI Web API not reachable";
+    try { await U.load(); } catch (e) { $("asof").textContent = `Could not load data: ${e.message}`; return; }
     U.designSwitcher($("designs"), "hex.html");
     buildScene(); drawContinent();
     const start = location.hash.slice(1);
     state.view = SITES[start] ? start : null;
     if (state.view) { drawSite(state.view); layers.cont.style.opacity = 0; }
     vb = state.view ? siteBox(state.view) : continentBox();
-    renderStats(); buildChips(); setVB(vb); asof();
+    renderChrome(); buildChips(); setVB(vb);
     window.addEventListener("resize", () => setVB(state.view ? siteBox(state.view) : continentBox()));
     document.addEventListener("keydown", e => { if (e.key === "Escape" && state.view) closeSite(); });
-    U.autoRefresh(() => { drawContinent(); if (state.view) drawSite(state.view); renderStats(); buildChips(); asof(); });
+    U.autoRefresh(() => { drawContinent(); if (state.view) drawSite(state.view); renderChrome(); buildChips(); });
   }
   main();
 })();

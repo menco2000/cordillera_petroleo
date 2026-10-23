@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
 <style>
 /* Layout: South America as a field of hexagons on near-black. Cells light up around each site
-   (hue = status, reach = production). Callout chips name the sites; a statistics column on the
-   left and a row of big numbers at the bottom carry the headline figures. One dark look. */
+   (hue = status, reach = production) and a callout chip names each site with one number.
+   A one-line header and a footer are the only other chrome; details live in PI Vision. One dark look. */
 :root {
   color-scheme: dark;
   --bg: #07071a;
@@ -26,13 +26,12 @@
   --font: "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; }
 body { background: var(--bg); color: var(--ink); font-family: var(--font); overflow: hidden; }
 #map { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
 #map g { transition: opacity .6s; }
-#map { z-index: 0; } #chips { z-index: 2; } #stats, #bottom, #designs, #asof { z-index: 3; }
-@media (min-width: 901px) { body::before { content: ""; position: fixed; z-index: 1; inset: 0 auto 0 0; width: 420px; pointer-events: none;
-  background: linear-gradient(90deg, var(--bg) 55%, rgba(7,7,26,0)); } }
+#map { z-index: 0; } #chips { z-index: 2; }
 .arc { fill: none; stroke: url(#arcGrad); stroke-width: 2; stroke-linecap: round; vector-effect: non-scaling-stroke; stroke-dasharray: 3 7; animation: arc 1.4s linear infinite; }
 @keyframes arc { to { stroke-dashoffset: -20; } }
 #chips { position: fixed; inset: 0; pointer-events: none; }
@@ -49,48 +48,38 @@ body { background: var(--bg); color: var(--ink); font-family: var(--font); overf
 .callout.well b { font-size: .84rem; }
 .stem { position: absolute; width: 1.5px; background: rgba(255,255,255,.5); transform-origin: top; pointer-events: none; }
 
-#stats { position: fixed; top: calc(28px + env(safe-area-inset-top, 0px)); left: max(28px, env(safe-area-inset-left, 0px)); width: 300px; display: grid; gap: 6px; pointer-events: auto; }
-#stats h1 { margin: 0 0 10px; font-size: 1.9rem; font-weight: 700; letter-spacing: -.01em; line-height: 1.1; }
-#stats .lbl { font-size: .8rem; font-weight: 600; display: flex; align-items: center; gap: 10px; }
-#stats .lbl button { font: inherit; font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); background: none; border: 0; cursor: pointer; padding: 0; }
-#stats .lbl button:hover { color: #fff; }
-#stats .hero { font-size: 2.9rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.05; font-variant-numeric: tabular-nums; }
-#stats .hero small { font-size: 1rem; font-weight: 500; color: var(--ink-2); margin-left: 6px; letter-spacing: 0; }
-#stats .sec { margin-top: 22px; font-size: .95rem; font-weight: 600; }
-#stats .seg { display: flex; gap: 3px; height: 6px; margin: 8px 0 12px; }
-#stats .seg i { border-radius: 3px; display: block; }
-#stats .rows { display: grid; gap: 0; }
-#stats .row { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto 44px; gap: 10px; align-items: center; font-size: .8rem; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
-#stats .row .d { width: 7px; height: 7px; border-radius: 50%; }
-#stats .row .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
-#stats .row .v, #stats .row .p { text-align: right; font-variant-numeric: tabular-nums; }
-#stats .row .p { font-weight: 600; }
-#bottom { position: fixed; bottom: calc(26px + env(safe-area-inset-bottom, 0px)); right: max(28px, env(safe-area-inset-right, 0px)); display: flex; gap: 40px; }
-#bottom div { display: grid; gap: 2px; }
-#bottom span { font-size: .8rem; color: var(--ink-2); }
-#bottom b { font-size: 1.9rem; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; line-height: 1.1; }
-#bottom b small { font-size: .85rem; font-weight: 500; color: var(--ink-2); margin-left: 3px; }
-#designs { position: fixed; top: calc(22px + env(safe-area-inset-top, 0px)); right: max(28px, env(safe-area-inset-right, 0px)); display: flex; gap: 2px; padding: 4px; border-radius: 10px; background: var(--chip); font-size: .75rem; }
-#designs a { color: var(--ink-2); text-decoration: none; padding: 5px 10px; border-radius: 7px; white-space: nowrap; }
-#designs a:hover { color: #fff; }
+header.top { position: fixed; z-index: 3; top: calc(22px + env(safe-area-inset-top, 0px)); left: max(24px, env(safe-area-inset-left, 0px)); right: max(24px, env(safe-area-inset-right, 0px)); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; pointer-events: none; }
+header.top > * { pointer-events: auto; }
+.title h1 { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -.01em; }
+.title p { margin: 2px 0 0; font-size: .92rem; color: var(--ink-2); }
+.title p b { color: #fff; font-variant-numeric: tabular-nums; }
+.title button { font: inherit; font-size: .8rem; font-weight: 600; color: var(--ink-2); background: none; border: 0; padding: 0; margin-bottom: 4px; cursor: pointer; letter-spacing: .04em; }
+.title button:hover { color: #fff; }
+.pv { display: inline-flex; align-items: center; gap: 7px; font-size: .84rem; font-weight: 600; color: #fff; background: linear-gradient(90deg, var(--violet), var(--good)); border-radius: 10px; padding: 9px 14px; text-decoration: none; white-space: nowrap; }
+.pv:hover { filter: brightness(1.1); }
+footer.bottom { position: fixed; z-index: 3; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); left: max(24px, env(safe-area-inset-left, 0px)); right: max(24px, env(safe-area-inset-right, 0px)); display: flex; align-items: center; justify-content: space-between; gap: 10px 18px; flex-wrap: wrap; font-size: .76rem; color: var(--ink-2); pointer-events: none; }
+footer.bottom > * { pointer-events: auto; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+#designs { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--chip); }
+#designs a { color: var(--ink-2); text-decoration: none; padding: 4px 11px; border-radius: 7px; }
 #designs a.on { color: #fff; background: linear-gradient(90deg, var(--violet), var(--good)); font-weight: 600; }
-#asof { position: fixed; top: calc(62px + env(safe-area-inset-top, 0px)); right: max(28px, env(safe-area-inset-right, 0px)); font-size: .72rem; color: var(--muted); text-align: right; max-width: 320px; }
-#tip { position: fixed; z-index: 20; pointer-events: none; background: var(--chip); border-radius: 12px; padding: 12px 14px; min-width: 220px; max-width: 310px; font-size: .8rem; box-shadow: 0 10px 30px rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.08); }
-#tip h3 { margin: 0 0 6px; font-size: 1rem; font-weight: 600; }
-#tip .kv { display: grid; grid-template-columns: auto auto; gap: 3px 14px; margin-top: 8px; }
-#tip .kv span:nth-child(odd) { color: var(--ink-2); }
-#tip .kv span:nth-child(even) { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
-#tip .units { display: grid; gap: 4px; margin-top: 8px; }
-#tip .units div { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
-#tip .units .m { color: var(--ink-2); font-variant-numeric: tabular-nums; font-size: .76rem; }
-#tip .why { margin-top: 8px; color: var(--ink-2); font-size: .76rem; }
-#tip .hint { margin-top: 6px; color: var(--muted); font-size: .72rem; }
+#asof { color: var(--muted); font-variant-numeric: tabular-nums; }
+#tip { position: fixed; z-index: 20; pointer-events: none; background: var(--chip); border-radius: 12px; padding: 11px 13px; min-width: 170px; max-width: 260px; font-size: .8rem; box-shadow: 0 10px 30px rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.08); display: grid; gap: 5px; justify-items: start; }
+#tip h3 { margin: 0; font-size: .98rem; font-weight: 600; }
+#tip .sub { color: var(--muted); font-size: .74rem; margin-top: -4px; }
+#tip .num { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+#tip .num small { font-size: .76rem; font-weight: 500; color: var(--ink-2); }
+#tip .why { color: var(--ink-2); font-size: .74rem; }
+#tip .hint { color: var(--muted); font-size: .7rem; }
 svg.ic { width: 12px; height: 12px; flex: none; }
 .pill { display: inline-flex; align-items: center; gap: 5px; font-size: .72rem; font-weight: 600; padding: 2px 8px 2px 6px; border-radius: 999px; background: rgba(255,255,255,.08); white-space: nowrap; }
-@media (max-width: 900px) {
-  #stats { width: auto; right: 16px; left: 16px; top: 64px; } #stats h1 { font-size: 1.3rem; } #stats .hero { font-size: 2rem; } #stats .rows, #stats .sec ~ .seg + .rows { display: none; }
-  #bottom { left: 16px; right: 16px; gap: 14px; justify-content: space-between; } #bottom b { font-size: 1.15rem; } #bottom span { font-size: .68rem; }
-  #designs { left: 16px; right: auto; top: 14px; } #asof { display: none; }
+@media (max-width: 640px) {
+  .title h1 { font-size: 1.15rem; } .title p { font-size: .82rem; } header.top { flex-direction: column; } .pv { padding: 7px 11px; font-size: .78rem; }
+  footer.bottom { justify-content: center; } #asof { width: 100%; text-align: center; order: 3; }
+  .callout { padding: 4px 8px 4px 4px; gap: 6px; border-radius: 8px; } .callout .ico { width: 22px; height: 22px; border-radius: 6px; } .callout .ico svg { width: 12px; height: 12px; }
+  .callout small { font-size: .62rem; } .callout b { font-size: .78rem; }
 }
 @media (prefers-reduced-motion: reduce) { .arc { animation: none; } }
 </style>
@@ -98,10 +87,8 @@ svg.ic { width: 12px; height: 12px; flex: none; }
 <body>
 <svg id="map" role="img" aria-label="Hexagon map of Cordillera Petróleo sites"></svg>
 <div id="chips"></div>
-<section id="stats" aria-label="Statistics"></section>
-<section id="bottom" aria-label="Headline figures"></section>
-<nav id="designs" aria-label="Map designs"></nav>
-<div id="asof"></div>
+<header class="top"><div class="title" id="title"></div><a class="pv" id="pv" target="_blank" rel="noopener" hidden>Open in PI Vision ↗</a></header>
+<footer class="bottom"><div class="legend" id="legend"></div><nav id="designs" aria-label="Map designs"></nav><span id="asof"></span></footer>
 <div id="tip" hidden></div>
 
 <script src="config.js"></script>

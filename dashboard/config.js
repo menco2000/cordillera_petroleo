@@ -10,6 +10,14 @@ window.CP_CONFIG = {
     timeoutSeconds: 15,
   },
   refreshSeconds: 60,
+  piVision: {
+    // Where "Open in PI Vision" goes. {asset} is replaced with the AF path of the site (or the company).
+    // Build an asset-relative display in PI Vision and paste its URL here, e.g.
+    // "https://PISERVER/PIVision/#/Displays/42/Site-Overview?asset={asset}"
+    home: "https://PISERVER/PIVision/",
+    siteDisplay: "",
+    overviewDisplay: "",
+  },
   map: {
     // Satellite imagery and place-name overlay (needs internet from the viewer's browser).
     // If the imagery can't load, the map falls back to offline country outlines.

@@ -25,7 +25,7 @@ af/build_af_xml.py            builds the AF XML import files from model.json
 af/CordilleraPetroleo.xml     full import (templates, elements, analyses, notification rules)
 af/CordilleraPetroleo_NoAnalytics.xml   fallback import without analyses/notifications
 sim/                          simulator + PI Web API writer
-dashboard/                    full-screen satellite map for management, reads AF via PI Web API
+dashboard/                    landing maps for management (topo heat map, 3D, hex, satellite), read AF via PI Web API
 docs/                         model review page
 ```
 
@@ -148,7 +148,8 @@ kept in the PI point `engunits` and the attribute description, not as AF UOMs.
 
 ## Operations map
 
-`dashboard/` is a full-screen satellite map of all sites. Hover a site, well or refinery for its
+`dashboard/` holds full-screen landing maps for managers. The main one is `topo.html`: a paper contour
+map with oil production drawn live as colored contour bands. Hover a site, well or refinery for its
 key figures; click a site to zoom to its wellfield. Trends and tables are meant for PI Vision.
 It reads AF through PI Web API and falls back to bundled demo data when PI Web API can't be reached.
 Setup (hosting, CORS, authentication): `dashboard/README.md`.

@@ -173,8 +173,35 @@
     return `${state.data.live ? "Live" : "Demo data"} · ${d.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}`;
   }
 
-  // the views a user can switch between (top of every page)
-  const DESIGNS = [["index.html", "Satellite"], ["holo.html", "Holo 3D"], ["hex.html", "Hex grid"], ["night.html", "Night ops"]];
+  // short hover/tap content for the landing pages: status and one number, details live in PI Vision
+  function briefSite(code, hint) {
+    const m = SITES[code], f = siteFigures(code), st = siteStatus(code);
+    return [el("h3", {}, m.name), el("div", { class: "sub" }, m.country), pill(st.level),
+      el("div", { class: "num" }, fmt(f.oil), el("small", {}, " bbl/d oil")),
+      st.reasons[0] ? el("div", { class: "why" }, st.reasons[0]) : null,
+      hint ? el("div", { class: "hint" }, hint) : null].filter(Boolean);
+  }
+  function briefWell(code, id) {
+    const w = SITES[code].wells.find(x => x.id === id), v = state.data.sites[code].wells[id];
+    return [el("h3", {}, w.name), pill(WELL_LEVEL[v.status] || "planned", v.status),
+      el("div", { class: "num" }, fmt(v.oil), el("small", {}, " bbl/d oil"))];
+  }
+  function briefRefinery(code) {
+    const m = SITES[code], f = siteFigures(code), st = siteStatus(code);
+    return [el("h3", {}, `${m.name} refinery`), pill(st.level),
+      el("div", { class: "num" }, fmt(f.thru), el("small", {}, " bbl/d processed"))];
+  }
+
+  // PI Vision link for a site (template in config.js); falls back to the PI Vision home page
+  function piVisionUrl(code) {
+    const pv = CFG.piVision || {};
+    const asset = `\\${(CFG.piwebapi || {}).afServer}\${M.database}\${code ? SITES[code].path : M.rootPath}`;
+    const tpl = code ? pv.siteDisplay : pv.overviewDisplay;
+    return tpl ? tpl.replace("{asset}", encodeURIComponent(asset)) : pv.home || null;
+  }
+
+  // the views a user can switch between
+  const DESIGNS = [["topo.html", "Topo"], ["map3d.html", "3D"], ["hex.html", "Hex"]];
   function designSwitcher(container, current) {
     container.replaceChildren(...DESIGNS.map(([href, label]) =>
       el("a", { href: href + location.hash, class: href === current ? "on" : null, "aria-current": href === current ? "page" : null }, label)));
@@ -183,5 +210,6 @@
   window.CP_UI = {
     M, SITES, CFG, state, el, sv, esc, fmt, merc, LEVEL, WELL_LEVEL, UNIT_LEVEL, UNIT_TEXT, icon, pill,
     siteStatus, siteFigures, totals, load, autoRefresh, kv, siteTip, wellTip, refineryTip, showTip, asOfText, designSwitcher,
+    briefSite, briefWell, briefRefinery, piVisionUrl,
   };
 })();

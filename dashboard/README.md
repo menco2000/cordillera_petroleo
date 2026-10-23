@@ -18,17 +18,40 @@ the refinery tooltip but doesn't change the status.
 
 ## Designs
 
-Four looks over the same data and status rules. Switch with the bar at the top of each page.
-A link like `holo.html#BAR` opens a site directly in any design.
+Several looks over the same data and status rules. The landing pages (`topo.html`, `map3d.html`,
+`hex.html`) show as little as possible: a headline number, one chip per site and an
+**Open in PI Vision** button. Switch between them with the bar in the footer.
+A link like `topo.html#BAR` opens a site directly in any design.
+
+### Topo (`topo.html`, recommended landing page)
+
+A paper-style contour map (real terrain) with oil production drawn on it as 6 colored contour
+bands. The bands are computed live in the browser from the current PI values, relative to the
+busiest site (company view) or the busiest well (site view). Sites with a watch or alert show a
+small flag on their chip. Click a site to open its wellfield: dark dots are producing wells,
+hollow dots are stopped, red is tripped, the square is the refinery.
+
+The terrain images are pre-rendered and committed (`img/topo/`, ~4.7 MB). To regenerate them, e.g.
+after moving a site or adding one, run `python dashboard/build_relief.py` (needs numpy, Pillow and
+internet; elevation from the AWS Terrain Tiles open dataset). The browser needs no internet for
+the map itself; only the IBM Plex fonts come from Google Fonts, with a system-font fallback.
 
 | Page | Look | Needs internet |
 |---|---|---|
+| `topo.html` | **Topo**: contour map, production as live heat contours, chips with leader lines | no |
+| `map3d.html` | **3D**: calm tilted relief, one thin bar per site | no |
 | `index.html` | **Satellite**: real imagery, clean markers, hover tooltips only | imagery only (falls back to outlines) |
 | `holo.html` | **Holo 3D**: tilted, extruded neon continent; glowing columns per site with the site's wells as a small skyline; tabs switch column height between oil, refinery throughput and wells producing; HUD detail windows; tilt/north dial | no |
 | `hex.html` | **Hex grid**: continent drawn as hexagons that light up around each site (color = status, reach = production); callout chips; statistics column and big headline numbers; animated arcs from wells to the refinery | no |
 | `night.html` | **Night ops**: satellite imagery darkened to a night-vision tint; pulsing beacons; HUD panels; live cursor coordinates | imagery only (falls back to outlines) |
 
 All designs share `common.js` (data loading, status rules, tooltip content), so the numbers are the same everywhere.
+
+## PI Vision links
+
+**Open in PI Vision** goes to `piVision.home` in `config.js`. To open an asset-relative display for the
+site being viewed, build that display in PI Vision and paste its URL into `piVision.siteDisplay`
+(and `overviewDisplay` for the company view), with `{asset}` where the AF path goes.
 
 ## Map imagery
 
@@ -43,6 +66,9 @@ but some uses need an ArcGIS account.
 ## Files
 
 ```
+topo.html, topo.js     Topo design (landing page)
+build_relief.py        renders img/topo/*.jpg and data/relief.js (terrain base maps)
+map3d.html, map3d.js   3D design
 index.html, app.js     Satellite design (Leaflet 1.9.4 bundled in vendor/leaflet, BSD-2 license)
 holo.html, holo.js     Holo 3D design
 hex.html, hex.js       Hex grid design
@@ -53,6 +79,7 @@ config.js              PI Web API URL, AF server, data source, refresh interval,
 data/model.js          sites, wells, AF element paths (generated)
 data/map.js            offline country outlines (generated)
 data/demo.js           simulator snapshot for demos without PI (generated)
+data/relief.js         where each terrain image sits on the map (generated)
 build_data.py          regenerates data/*.js after changing model/spec.py
 ```
 
