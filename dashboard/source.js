@@ -12,7 +12,7 @@
     return {
       name: "demo",
       async snapshot() { return { asOf: D.asOf, live: false, sites: structuredClone(D.sites) }; },
-      // every PI attribute of one site, keyed by PI tag (used by the 3D plant view)
+      // every PI attribute of one site, keyed by PI tag (used by the plant view)
       async tagValues(code) { return { asOf: D.asOf, live: false, values: { ...D.sites[code].tags } }; },
     };
   }

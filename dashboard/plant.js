@@ -1,923 +1,505 @@
-// 3D plant: one site's AF hierarchy (areas -> units -> equipment) as an isometric model,
-// with product flows from the wells to the product tanks driven by live PI values.
-import * as THREE from "three";
-import { OrbitControls } from "./vendor/three/OrbitControls.js";
-import { CSS2DRenderer, CSS2DObject } from "./vendor/three/CSS2DRenderer.js";
-import { mergeGeometries } from "./vendor/three/BufferGeometryUtils.js";
+// Plant view: one site's AF hierarchy (areas -> units -> equipment) as a flat isometric SVG
+// illustration, with the product flows from the wells to the product tanks driven by live PI values.
+// No WebGL, so it stays light on machines without a graphics card: the browser only repaints when you
+// pan, zoom, hover or new values arrive. Layout, flows, values and panels live in plant-core.js.
+import {
+  $, U, CFG, fmt, PRODUCTS, TANK_PRODUCT, LEVEL_HEX, GROUND, layoutSite, ctx, statusOf, statusAttr, STATUS_LEVEL,
+  updatePipes, tankFraction, fetchValues, initialValues, renderInfo, renderTreeDots, showSelection, freeArea,
+  pipeTip, placeTip, asOfText, wirePage,
+} from "./plant-core.js";
 
-const U = window.CP_UI, P = window.CP_PLANT, { M, SITES, CFG, state, el, fmt } = U;
-const $ = id => document.getElementById(id);
+const svg = $("scene");
+// industrial look: galvanised equipment, yellow structural steel, concrete pads (line colours in plant.html)
+const COL = { slab: "#d8d5cd", pad: "#c8c3b8", field: "#cfcab2", body: "#c3c9ce", body2: "#8f99a2", steel: "#e2b007", dark: "#2e343a", cellar: "#6f695e", water: "#76afbb" };
 
-// ------------------------------------------------------------------ look
-const COL = {
-  bg: 0xe6f5ee, ground: 0xd9efe4, slab: 0xf6f8f8, pad: 0xe6ecee, body: 0xfafbfc, body2: 0xdde4ea, steel: 0xaeb9c3,
-  dark: 0x4a5866, ink: 0x1f2d3a, cellar: 0x9aa7b2, flame: 0xff9a3c, sel: 0x1f2d3a, hover: 0x3f9d1c,
-};
-const LEVEL_COL = { good: 0x7ed957, warning: 0xf5b82e, critical: 0xe5484d, planned: 0xaab4bd };
-const LEVEL_CSS = { good: "var(--good)", warning: "var(--warning)", critical: "var(--critical)", planned: "var(--planned)" };
-const PRODUCTS = {
-  crude: { label: "Crude oil", color: 0x9a6a36, r: 0.34 },
-  gasoline: { label: "Naphtha / gasoline", color: 0xf2c230, r: 0.24 },
-  jet: { label: "Jet / kerosene", color: 0x48a8dc, r: 0.24 },
-  diesel: { label: "Diesel", color: 0xe9743a, r: 0.26 },
-  residue: { label: "Residue / fuel oil", color: 0x4b4450, r: 0.3 },
-  gas: { label: "Recycle gas", color: 0xa48ad8, r: 0.2 },
-  steam: { label: "Steam", color: 0xc9d2d9, r: 0.18 },
-  water: { label: "Cooling water", color: 0x52c6d6, r: 0.2 },
-};
-const TANK_PRODUCT = { "Crude Oil": "crude", "Gasoline": "gasoline", "Jet Kerosene": "jet", "Diesel": "diesel", "Fuel Oil": "residue" };
-const STATUS_LEVEL = { ...U.WELL_LEVEL, ...U.UNIT_LEVEL, Running: "good", Stopped: "planned", Tripped: "critical", Maintenance: "warning" };
+// ------------------------------------------------------------------ projection
+// classic isometric: x and z at ±30°, y straight up; depth (x + z) grows towards the viewer
+const C30 = Math.cos(Math.PI / 6), S30 = 0.5;
+const proj = (x, y, z) => [(x - z) * C30, (x + z) * S30 - y];
+const depthOf = (x, z) => x + z;
+const P = proj;
+const f = n => Math.round(n * 100) / 100;
+const pts = list => list.map(([x, y]) => `${f(x)},${f(y)}`).join(" ");
 
-// process flows between AF elements (element id suffix), the PI attribute that measures them and where
-// they leave / enter the equipment (fraction of its height)
-const FLOWS = [
-  ["SEP-001", "P-001", "crude", ["SEP-001", "QO"]],
-  ["P-001", "PL-001", "crude", ["P-001", "FLOW"]],
-  ["PL-001", "TK-101", "crude", ["TK-101", "QIN"]],
-  ["PL-001", "TK-102", "crude", ["TK-102", "QIN"]],
-  ["TK-101", "P-101", "crude", ["TK-101", "QOUT"], 0.1],
-  ["TK-102", "P-101", "crude", ["TK-102", "QOUT"], 0.1],
-  ["P-101", "D-101", "crude", ["P-101", "FLOW"]],
-  ["D-101", "H-101", "crude", ["C-101", "QF"]],
-  ["H-101", "C-101", "crude", ["C-101", "QF"], 0.3, 0.25],
-  ["C-101", "TK-401", "gasoline", ["C-101", "QNAP"], 0.95, 0.9],
-  ["C-101", "TK-402", "jet", ["C-101", "QKER"], 0.7, 0.9],
-  ["C-101", "R-301", "diesel", ["C-101", "QDSL"], 0.45, 0.9],
-  ["C-101", "H-201", "residue", ["C-101", "QRES"], 0.05],
-  ["H-201", "C-201", "residue", ["C-201", "QF"], 0.3, 0.3],
-  ["C-201", "TK-404", "residue", ["TK-404", "QIN"], 0.1, 0.9],
-  ["K-301", "R-301", "gas", ["K-301", "FLOW"], 0.5, 0.7],
-  ["R-301", "V-301", "diesel", ["R-301", "QF"], 0.1],
-  ["V-301", "TK-403", "diesel", ["TK-403", "QIN"], 0.5, 0.9],
-  ["B-501", "EJ-201", "steam", ["EJ-201", "QSTM"], 0.8, 0.8],
-  ["B-501", "C-101", "steam", ["B-501", "QSTM"], 0.8, 0.15],
-  ["CT-501", "EJ-201", "water", ["CT-501", "QCW"], 0.3, 0.5],
-  ["CT-501", "K-301", "water", ["CT-501", "QCW"], 0.3, 0.4],
-];
-
-// ------------------------------------------------------------------ renderer
-// Without a GPU (e.g. a server VM) the browser renders WebGL on the CPU. Detect that and go easy:
-// no antialiasing, 1x pixels, fewer animation frames. config.js plant.quality can force "low" / "high".
-const PCFG = CFG.plant || {};
-function softwareGL() {
-  try {
-    const gl = document.createElement("canvas").getContext("webgl2") || document.createElement("canvas").getContext("webgl");
-    if (!gl) return true;
-    const ext = gl.getExtension("WEBGL_debug_renderer_info");
-    const name = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
-    gl.getExtension("WEBGL_lose_context")?.loseContext();
-    return /swiftshader|llvmpipe|softpipe|software|basic render|warp/i.test(String(name));
-  } catch (_) { return false; }
+// ------------------------------------------------------------------ colours
+function mix(hex, to, t) {
+  const a = parseInt(hex.slice(1), 16), b = parseInt(to.slice(1), 16);
+  const c = [16, 8, 0].map(s => Math.round(((a >> s) & 255) * (1 - t) + ((b >> s) & 255) * t));
+  return `#${c.map(v => v.toString(16).padStart(2, "0")).join("")}`;
 }
-const LOW = PCFG.quality === "low" || (PCFG.quality !== "high" && softwareGL());
-const ANIM_FPS = LOW ? (PCFG.lowPowerFps ?? 4) : (PCFG.maxFps ?? 30);
-const canvas = $("scene");
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: !LOW, powerPreference: LOW ? "low-power" : "default" });
-renderer.setPixelRatio(LOW ? 1 : Math.min(2, window.devicePixelRatio || 1));
-renderer.setClearColor(COL.bg);
-const labelRenderer = new CSS2DRenderer({ element: $("labels") });
-const scene = new THREE.Scene();
-scene.add(new THREE.HemisphereLight(0xffffff, 0xb9cbc2, 2.1));
-const sun = new THREE.DirectionalLight(0xffffff, 1.5); sun.position.set(60, 120, 90); scene.add(sun);
-const FRUSTUM = 140;
-const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -2000, 4000);
-// standard angle: from the front-left; on portrait screens from the side, so the row runs top to bottom
-const viewDir = () => (window.innerWidth / window.innerHeight < 0.8 ? new THREE.Vector3(1.4, 1.1, 0.42) : new THREE.Vector3(1, 1.05, 1.3)).normalize();
-const controls = new OrbitControls(camera, canvas);
-Object.assign(controls, { enableDamping: true, dampingFactor: 0.12, minZoom: 0.08, maxZoom: 14, maxPolarAngle: 1.4, screenSpacePanning: true, zoomToCursor: true });
-
-// draw only when something changed: camera moves, data arrives, hover, or an animation frame is due
-let needsRender = true, needsLabels = true;
-const invalidate = () => { needsRender = true; needsLabels = true; };
-controls.addEventListener("change", invalidate);
-
-function resize() {
-  invalidate();
-  const w = window.innerWidth, h = window.innerHeight, a = w / h;
-  renderer.setSize(w, h, false); labelRenderer.setSize(w, h);
-  camera.left = -FRUSTUM * a / 2; camera.right = FRUSTUM * a / 2; camera.top = FRUSTUM / 2; camera.bottom = -FRUSTUM / 2;
-  camera.updateProjectionMatrix();
-  outlineMat.uniforms.res.value.set(w, h);
+const light = (c, t = 0.18) => mix(c, "#ffffff", t), dark = (c, t = 0.18) => mix(c, "#000000", t);
+const grads = new Map();
+function grad(color, vertical) {      // shading across a cylinder: lit from the upper left
+  const id = `g${vertical ? "v" : "h"}${color.slice(1)}`;
+  if (!grads.has(id)) grads.set(id, `<linearGradient id="${id}" x1="0" y1="0" x2="${vertical ? 0 : 1}" y2="${vertical ? 1 : 0}">
+    <stop offset="0" stop-color="${light(color, 0.35)}"/><stop offset=".45" stop-color="${color}"/><stop offset="1" stop-color="${dark(color, 0.16)}"/></linearGradient>`);
+  return `url(#${id})`;
 }
 
-// ------------------------------------------------------------------ materials
-const mats = new Map();
-function mat(color, opts = {}) {
-  const k = `${color}|${JSON.stringify(opts)}`;
-  if (!mats.has(k)) mats.set(k, new THREE.MeshLambertMaterial({ color, ...opts }));
-  return mats.get(k);
+// ------------------------------------------------------------------ primitives
+// Everything is painted back to front: each primitive has a depth (x + z); ties keep
+// the order they were drawn in, so a band drawn after its column stays on top of it.
+let prims = [], seq = 0, cur = null, bounds = null;
+const itemBounds = new Map();
+function grow(b, x, y) { b[0] = Math.min(b[0], x); b[1] = Math.min(b[1], y); b[2] = Math.max(b[2], x); b[3] = Math.max(b[3], y); }
+function track(list) {
+  for (const [x, y] of list) {
+    grow(bounds, x, y);
+    if (cur) { let b = itemBounds.get(cur); if (!b) itemBounds.set(cur, b = [Infinity, Infinity, -Infinity, -Infinity]); grow(b, x, y); }
+  }
 }
-const lineMat = new THREE.LineBasicMaterial({ color: COL.ink, transparent: true, opacity: 0.85 });
-// silhouette lines: back faces pushed out by a constant number of pixels (illustration look)
-const outlineMat = new THREE.ShaderMaterial({
-  side: THREE.BackSide,
-  uniforms: { res: { value: new THREE.Vector2(1, 1) }, px: { value: 1.3 }, color: { value: new THREE.Color(COL.ink) } },
-  vertexShader: `uniform vec2 res; uniform float px;
-    void main() {
-      vec4 c = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      vec3 n = normalize(mat3(projectionMatrix) * normalMatrix * normal);
-      vec2 d = length(n.xy) > 1e-4 ? normalize(n.xy) : vec2(0.0);
-      c.xy += d * px * 2.0 / res * c.w;
-      c.z += 0.0004 * c.w;
-      gl_Position = c;
-    }`,
-  fragmentShader: `uniform vec3 color; void main() { gl_FragColor = vec4(color, 1.0); }`,
-});
-
-function mesh(geo, material, parent, x = 0, y = 0, z = 0, { edges = true, outline = true } = {}) {
-  const m = new THREE.Mesh(geo, material);
-  m.position.set(x, y, z);
-  m.userData.ol = outline; m.userData.ed = edges;
-  parent.add(m);
-  return m;
-}
-function decorate(m) {
-  if (m.userData.ol) m.add(new THREE.Mesh(m.geometry, outlineMat));
-  if (m.userData.ed) m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 25), lineMat));
+function push(depth, svgText, attrs = cur ? ` data-id="${cur}"` : "") {
+  prims.push({ d: depth, s: seq++, t: `<g${attrs}>${svgText}</g>` });
 }
 
-// Merge a model's static parts into one mesh per material, plus one outline mesh and one line set:
-// a few draw calls per piece of equipment instead of dozens. Parts marked dynamic (moving beams,
-// fans, tank fill) stay separate.
-function bake(root) {
-  root.updateMatrixWorld(true);
-  const inv = root.matrixWorld.clone().invert(), byMat = new Map(), ol = [], ed = [], drop = [], dyn = [];
-  const isDynamic = o => { for (let p = o; p && p !== root; p = p.parent) if (p.userData.dynamic) return true; return false; };
-  root.traverse(o => {
-    if (!o.isMesh) return;
-    if (isDynamic(o)) { dyn.push(o); return; }
-    const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
-    const t = o.geometry.clone().applyMatrix4(m);
-    if (!byMat.has(o.material)) byMat.set(o.material, []);
-    byMat.get(o.material).push(t);
-    if (o.userData.ol) ol.push(t);
-    if (o.userData.ed) ed.push(new THREE.EdgesGeometry(o.geometry, 25).applyMatrix4(m));
-    drop.push(o);
+function box(cx, y0, cz, w, h, d, color, cls = "", { top: withTop = true } = {}) {
+  const a = cx, b = cz;
+  const a0 = a - w / 2, a1 = a + w / 2, b0 = b - d / 2, b1 = b + d / 2, y1 = y0 + h;
+  const top = [proj(a0, y1, b0), proj(a1, y1, b0), proj(a1, y1, b1), proj(a0, y1, b1)];
+  const right = [proj(a1, y0, b0), proj(a1, y0, b1), proj(a1, y1, b1), proj(a1, y1, b0)];
+  const left = [proj(a0, y0, b1), proj(a1, y0, b1), proj(a1, y1, b1), proj(a0, y1, b1)];
+  track(top); track(right); track(left);
+  push(a + b, `<polygon class="o ${cls}" points="${pts(left)}" fill="${dark(color, 0.07)}"/><polygon class="o ${cls}" points="${pts(right)}" fill="${dark(color, 0.17)}"/>` +
+    (withTop ? `<polygon class="o ${cls}" points="${pts(top)}" fill="${color}"/>` : ""));
+}
+const band = (cx, y0, cz, w, h, d, color) => box(cx, y0, cz, w, h, d, color, "", { top: false });   // painted stripe round a box
+
+// a flat rectangle on the front (+z) face of a box
+function facePatch(cx, cz, halfW, halfD, y0, y1, halfLen, color) {
+  const pz = cz + halfD + 0.02;
+  const q = [P(cx - halfLen, y0, pz), P(cx + halfLen, y0, pz), P(cx + halfLen, y1, pz), P(cx - halfLen, y1, pz)];
+  push(depthOf(cx, cz) + 0.01, `<polygon points="${pts(q)}" fill="${color}"/>`);
+}
+
+// vertical cylinder; a circle of radius r in the ground plane shows as an ellipse rx × ry
+const RX = Math.SQRT2 * C30, RY = Math.SQRT2 * S30;
+function cylV(cx, y0, cz, r, h, color, { dome = false, cap = true } = {}) {
+  const [bx, by] = P(cx, y0, cz), [tx, ty] = P(cx, y0 + h, cz), rx = r * RX, ry = r * RY;
+  track([[bx - rx, by + ry], [bx + rx, by + ry], [tx - rx, ty - (dome ? r : ry)], [tx + rx, ty - ry]]);
+  let s = `<path class="o" fill="${grad(color, false)}" d="M${f(bx + rx)},${f(by)} L${f(tx + rx)},${f(ty)} L${f(tx - rx)},${f(ty)} L${f(bx - rx)},${f(by)} A${f(rx)},${f(ry)} 0 0 0 ${f(bx + rx)},${f(by)}Z"/>`;
+  if (dome) s += `<path class="o" fill="${grad(color, false)}" d="M${f(tx - rx)},${f(ty)} A${f(rx)},${f(ry)} 0 0 0 ${f(tx + rx)},${f(ty)} A${f(rx)},${f(r * 0.95)} 0 0 0 ${f(tx - rx)},${f(ty)}Z"/>`;
+  else if (cap) s += `<ellipse class="o" cx="${f(tx)}" cy="${f(ty)}" rx="${f(rx)}" ry="${f(ry)}" fill="${light(color, 0.12)}"/>`;
+  push(depthOf(cx, cz), s);
+}
+
+function hull(p) {
+  p = p.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], hi = [];
+  for (const q of p) { while (lo.length >= 2 && cross(lo.at(-2), lo.at(-1), q) <= 0) lo.pop(); lo.push(q); }
+  for (const q of p.slice().reverse()) { while (hi.length >= 2 && cross(hi.at(-2), hi.at(-1), q) <= 0) hi.pop(); hi.push(q); }
+  return lo.slice(0, -1).concat(hi.slice(0, -1));
+}
+// horizontal cylinder along world x or z, centred at (cx, cy, cz)
+function cylH(cx, cy, cz, r, len, axis, color, { caps = 0 } = {}) {
+  const a = cx, b = cz, along = axis === "x" ? "a" : "b";
+  const ring = e => Array.from({ length: 20 }, (_, i) => {
+    const t = i / 20 * Math.PI * 2, u = r * Math.cos(t), v = r * Math.sin(t);
+    return along === "a" ? proj(a + e, cy + v, b + u) : proj(a + u, cy + v, b + e);
   });
-  const merged = [];
-  for (const [material, geos] of byMat) {
-    const g = geos.length > 1 ? mergeGeometries(geos) : geos[0];
-    if (!g) { drop.length = 0; break; }                 // incompatible parts: keep them as they are
-    merged.push(new THREE.Mesh(g, material));
-  }
-  if (!drop.length) { root.traverse(o => { if (o.isMesh) decorate(o); }); return; }
-  drop.forEach(o => o.removeFromParent());
-  merged.forEach(m => root.add(m));
-  const og = ol.length ? mergeGeometries(ol) : null;
-  if (og) root.add(new THREE.Mesh(og, outlineMat));
-  const eg = ed.length ? mergeGeometries(ed) : null;
-  if (eg) root.add(new THREE.LineSegments(eg, lineMat));
-  dyn.forEach(decorate);
-}
-const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
-const cyl = (r, h, s = 24, r2 = r) => new THREE.CylinderGeometry(r2, r, h, s);
-
-// ------------------------------------------------------------------ equipment builders
-// each returns { g, w, d, h, accent: [materials to colour by status], update(values, tags) }
-function accentMat() { return new THREE.MeshLambertMaterial({ color: LEVEL_COL.planned }); }
-
-function tank(node) {
-  const g = new THREE.Group(), p = node.props;
-  const r = Math.max(2.6, Math.min(6.2, (p.Diameter || 40) * 0.3048 * 0.3));
-  const h = Math.max(6, (p["Max Fill Height"] || 48) * 0.3048 * 0.55);
-  const prod = PRODUCTS[TANK_PRODUCT[p.Product] || "crude"];
-  mesh(cyl(r, h, 28), mat(COL.body), g, 0, h / 2, 0);
-  const fill = mesh(cyl(r + 0.04, 1, 28), mat(prod.color), g, 0, 0, 0, { outline: false });
-  fill.userData.dynamic = true;
-  mesh(cyl(r + 0.1, 0.9, 28, r * 0.12), mat(COL.body2), g, 0, h + 0.45, 0);
-  for (let i = 0; i < 10; i++) {                                 // stair up the side
-    const a = -0.6 + i * 0.13;
-    mesh(box(0.7, 0.08, 0.3), mat(COL.steel), g, Math.sin(a) * (r + 0.4), 0.6 + i * (h - 1) / 10, Math.cos(a) * (r + 0.4), { outline: false });
-  }
-  return {
-    g, w: 2 * r + 1, d: 2 * r + 1, h, accent: [],
-    update(v) {
-      const lvl = +v[`${node.tag}.LVL`], frac = Math.max(0.01, Math.min(1, (lvl || 0) / (p["Max Fill Height"] || 48)));
-      fill.scale.y = h * frac; fill.position.y = h * frac / 2;
-    },
-  };
+  const near = ring(len / 2), far = ring(-len / 2);
+  const body = caps ? hull(near.concat(far, ring(len / 2 + caps), ring(-len / 2 - caps))) : hull(near.concat(far));
+  track(body);
+  push(a + b, `<polygon class="o" points="${pts(body)}" fill="${grad(color, true)}"/>` + (caps ? "" : `<polygon class="o" points="${pts(near)}" fill="${light(color, 0.1)}"/>`));
 }
 
-function column(node, vacuum) {
-  const g = new THREE.Group(), a = accentMat();
-  const r = vacuum ? 1.9 : 1.45, h = vacuum ? 16 : 23;
-  mesh(cyl(r * 1.08, 2, 24), mat(COL.body2), g, 0, 1, 0);
-  if (vacuum) {
-    mesh(cyl(r * 0.7, h * 0.35, 24), mat(COL.body), g, 0, 2 + h * 0.175, 0);
-    mesh(cyl(r * 0.7, h * 0.2, 24, r), mat(COL.body), g, 0, 2 + h * 0.45, 0);
-    mesh(cyl(r, h * 0.45, 24), mat(COL.body), g, 0, 2 + h * 0.775, 0);
-  } else mesh(cyl(r, h, 24), mat(COL.body), g, 0, 2 + h / 2, 0);
-  const top = new THREE.SphereGeometry(r, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2);
-  mesh(top, mat(COL.body), g, 0, 2 + h, 0);
-  mesh(cyl(r + 0.06, 0.6, 24), a, g, 0, 2 + h * 0.55, 0, { outline: false });
-  for (let y = 5; y < h; y += 5) mesh(cyl(r + 0.7, 0.12, 24), mat(COL.steel), g, 0, 2 + y, 0, { outline: false });
-  mesh(box(0.35, h, 0.35), mat(COL.steel), g, r + 0.5, 2 + h / 2, 0, { outline: false });
-  return { g, w: 2 * r + 2, d: 2 * r + 2, h: h + 2 + r, accent: [a] };
-}
-
-function heater(node) {
-  const g = new THREE.Group(), a = accentMat();
-  mesh(box(5, 0.6, 4.2), mat(COL.body2), g, 0, 0.3, 0);
-  mesh(box(4.4, 5.5, 3.6), mat(COL.body), g, 0, 3.35, 0);
-  mesh(box(4.45, 0.5, 3.65), a, g, 0, 1.2, 0, { outline: false });
-  mesh(box(2.4, 1.4, 2.2), mat(COL.body), g, 0, 6.8, 0);
-  mesh(cyl(0.55, 7, 16, 0.42), mat(COL.body2), g, 0, 11, 0);
-  const flame = new THREE.MeshLambertMaterial({ color: 0x5b6670, emissive: 0x000000 });
-  for (const x of [-1.2, 0, 1.2]) mesh(box(0.6, 0.5, 0.05), flame, g, x, 2.3, 1.82, { outline: false, edges: false });
-  return {
-    g, w: 5.5, d: 4.6, h: 14.5, accent: [a],
-    update(v) { const on = +v[`${node.tag}.QFG`] > 1; flame.color.set(on ? COL.flame : 0x5b6670); flame.emissive.set(on ? 0x8a3a00 : 0); },
-  };
-}
-
-function pump(node) {
-  const g = new THREE.Group(), a = accentMat();
-  mesh(box(3.4, 0.35, 1.5), mat(COL.dark), g, 0, 0.18, 0);
-  const motor = mesh(cyl(0.5, 1.5, 20), a, g, -0.7, 0.95, 0); motor.rotation.z = Math.PI / 2;
-  const casing = mesh(cyl(0.62, 0.55, 20), mat(COL.body), g, 0.85, 0.95, 0); casing.rotation.x = Math.PI / 2;
-  mesh(cyl(0.18, 1.2, 12), mat(COL.steel), g, 0.85, 1.6, 0);
-  return { g, w: 3.8, d: 2, h: 1.9, accent: [a] };
-}
-
-function hvessel(node, len, r, extra) {
-  const g = new THREE.Group(), a = accentMat(), y = r + 0.9;
-  const v = mesh(new THREE.CapsuleGeometry(r, len, 8, 24), mat(COL.body), g, 0, y, 0); v.rotation.z = Math.PI / 2;
-  const band = mesh(cyl(r + 0.05, 0.4, 24), a, g, 0, y, 0, { outline: false }); band.rotation.z = Math.PI / 2;
-  for (const x of [-len * 0.32, len * 0.32]) mesh(box(0.5, y, r * 1.5), mat(COL.body2), g, x, y / 2, 0);
-  if (extra) extra(g, y, r);
-  return { g, w: len + 2 * r + 0.6, d: 2 * r + 1, h: y + r, accent: [a] };
-}
-
-function reactor(node) {
-  const g = new THREE.Group(), a = accentMat(), r = 1.35, h = 7.5;
-  mesh(cyl(r * 1.05, 2.4, 24), mat(COL.body2), g, 0, 1.2, 0);
-  mesh(new THREE.CapsuleGeometry(r, h, 8, 24), mat(COL.body), g, 0, 2.4 + r + h / 2, 0);
-  mesh(cyl(r + 0.05, 0.5, 24), a, g, 0, 2.4 + h * 0.6, 0, { outline: false });
-  mesh(cyl(r + 0.7, 0.12, 24), mat(COL.steel), g, 0, 2.4 + h + r, 0, { outline: false });
-  return { g, w: 2 * r + 2, d: 2 * r + 2, h: 2.4 + h + 2 * r, accent: [a] };
-}
-
-function compressor(node) {
-  const g = new THREE.Group(), a = accentMat();
-  mesh(box(5, 0.4, 2.6), mat(COL.dark), g, 0, 0.2, 0);
-  mesh(box(2.3, 2.1, 2.1), a, g, -1.2, 1.45, 0);
-  const c = mesh(cyl(0.85, 2.2, 20), mat(COL.body), g, 1.3, 1.3, 0); c.rotation.z = Math.PI / 2;
-  mesh(cyl(0.3, 1.4, 12), mat(COL.steel), g, 1.3, 2.6, 0);
-  return { g, w: 5.4, d: 3, h: 3.3, accent: [a] };
-}
-
-function ejector(node) {
-  const g = new THREE.Group(), a = accentMat();
-  for (const x of [-1, 1]) mesh(box(0.25, 5, 0.25), mat(COL.steel), g, x, 2.5, 0.8, { outline: false });
-  for (const x of [-1, 1]) mesh(box(0.25, 5, 0.25), mat(COL.steel), g, x, 2.5, -0.8, { outline: false });
-  mesh(box(2.5, 0.15, 2), mat(COL.steel), g, 0, 5, 0, { outline: false });
-  for (const [y, r] of [[5.6, 0.32], [6.4, 0.26]]) { const e = mesh(cyl(r, 2.6, 16), mat(COL.body), g, 0, y, 0); e.rotation.z = Math.PI / 2; }
-  mesh(cyl(0.65, 3, 20), mat(COL.body), g, 0, 1.6, 0);
-  mesh(cyl(0.7, 0.4, 20), a, g, 0, 2.6, 0, { outline: false });
-  return { g, w: 3.2, d: 2.4, h: 6.8, accent: [a] };
-}
-
-function boiler(node) {
-  const g = new THREE.Group(), a = accentMat();
-  mesh(box(6.5, 3.8, 3.6), mat(COL.body), g, 0, 1.9, 0);
-  mesh(box(6.55, 0.5, 3.65), a, g, 0, 0.6, 0, { outline: false });
-  const drum = mesh(new THREE.CapsuleGeometry(0.7, 4.2, 6, 20), mat(COL.body2), g, 0, 4.5, 0); drum.rotation.z = Math.PI / 2;
-  mesh(cyl(0.45, 6, 16, 0.35), mat(COL.body2), g, 2.6, 6.8, -1);
-  return { g, w: 7, d: 4, h: 9.8, accent: [a] };
-}
-
-function coolingTower(node) {
-  const g = new THREE.Group(), a = accentMat(), fans = [];
-  mesh(box(10, 0.6, 4.6), mat(0x9fd8e0), g, 0, 0.3, 0);
-  mesh(box(9.4, 4, 4), mat(COL.body), g, 0, 2.6, 0);
-  for (let y = 1.2; y < 4.4; y += 0.7) mesh(box(9.45, 0.12, 4.05), mat(COL.body2), g, 0, y, 0, { outline: false, edges: false });
-  for (const x of [-3.1, 0, 3.1]) {
-    mesh(cyl(1.35, 1.2, 28), a, g, x, 5.2, 0);
-    const f = new THREE.Group(); f.position.set(x, 5.85, 0); f.userData.dynamic = true;
-    for (let i = 0; i < 4; i++) { const b = mesh(box(2.2, 0.06, 0.35), mat(COL.dark), f, 0, 0, 0, { outline: false }); b.rotation.y = i * Math.PI / 4; }
-    g.add(f); fans.push(f);
-  }
-  let on = false;
-  return {
-    g, w: 10.5, d: 5, h: 6.2, accent: [a],
-    update(v) { on = v[`${node.tag}.STATUS`] === "Running"; },
-    tick(dt) { if (on) fans.forEach(f => { f.rotation.y += dt * 4; }); },
-  };
-}
-
-function pipeline(node) {
-  const g = new THREE.Group(), a = accentMat(), len = 16;
-  const pp = mesh(cyl(0.4, len, 16), mat(COL.body2), g, 0, 0.9, 0); pp.rotation.z = Math.PI / 2;
-  for (let x = -len / 2 + 1; x <= len / 2 - 1; x += 2.5) mesh(box(0.3, 0.5, 1.2), mat(COL.dark), g, x, 0.25, 0, { outline: false });
-  for (const x of [-len / 2, len / 2]) { const f = mesh(cyl(0.55, 0.3, 16), a, g, x, 0.9, 0); f.rotation.z = Math.PI / 2; }
-  return { g, w: len + 1, d: 2, h: 1.5, accent: [a], ports: { out: new THREE.Vector3(len / 2, 0.9, 0), in: new THREE.Vector3(-len / 2, 0.9, 0) } };
-}
-
-function well(node) {
-  const g = new THREE.Group(), a = accentMat(), lift = node.props["Lift Method"];
-  mesh(box(3.2, 0.25, 3.2), mat(COL.cellar), g, 0, 0.12, 0, { outline: false });
-  // wellhead ("christmas tree")
-  mesh(cyl(0.32, 1.8, 14), mat(COL.body2), g, 0, 1.15, 0);
-  mesh(cyl(0.4, 0.35, 14), a, g, 0, 2.0, 0, { outline: false });
-  const arm = mesh(cyl(0.16, 1.6, 10), mat(COL.body2), g, 0, 1.4, 0); arm.rotation.z = Math.PI / 2;
-  for (const x of [-0.8, 0.8]) { const w = mesh(new THREE.TorusGeometry(0.22, 0.05, 6, 14), mat(0xd04a3a), g, x, 1.4, 0.2, { outline: false }); w.rotation.y = 0; }
-  let tick = null, spm = 0, phase = Math.random() * 6;
-  if (lift === "Rod Pump") {
-    const base = -2.6;
-    mesh(box(5.5, 0.35, 1.3), mat(COL.dark), g, base + 1.2, 0.3, 0);
-    for (const z of [-0.45, 0.45]) { const l = mesh(box(0.22, 3.6, 0.22), mat(COL.dark), g, base + 1.6, 2.2, z, { outline: false }); l.rotation.x = z > 0 ? -0.12 : 0.12; }
-    const beam = new THREE.Group(); beam.position.set(base + 1.6, 3.9, 0); beam.userData.dynamic = true; g.add(beam);
-    mesh(box(5.2, 0.38, 0.38), a, beam, 0.6, 0, 0);
-    mesh(box(0.5, 1.3, 0.5), mat(COL.body2), beam, 3.25, -0.35, 0);           // horsehead over the well
-    mesh(box(0.9, 0.6, 0.6), mat(COL.dark), beam, -2, -0.1, 0);
-    const crank = new THREE.Group(); crank.position.set(base - 0.6, 1.5, 0); crank.userData.dynamic = true; g.add(crank);
-    for (const z of [-0.55, 0.55]) mesh(box(1.6, 0.5, 0.18), mat(COL.dark), crank, 0.5, 0, z, { outline: false });
-    mesh(box(1.3, 0.9, 1.1), mat(COL.body2), g, base - 1.7, 0.75, 0);         // gearbox + motor
-    tick = dt => { if (spm > 0) phase += dt * spm / 60 * Math.PI * 2; beam.rotation.z = Math.sin(phase) * 0.22; crank.rotation.z = -phase; };
-  } else if (lift === "ESP") {
-    mesh(box(0.9, 1.8, 0.5), mat(COL.body), g, -2.2, 0.9 + 0.25, 0);
-    mesh(box(0.92, 0.3, 0.52), a, g, -2.2, 1.7, 0, { outline: false });
-  } else if (lift === "PCP") {
-    mesh(cyl(0.45, 1.1, 16), mat(COL.dark), g, 0, 2.75, 0);
-    const mtr = mesh(cyl(0.38, 1.2, 16), a, g, 0.55, 3.0, 0); mtr.rotation.z = Math.PI / 2;
-  } else if (lift === "Gas Lift") {
-    const inj = mesh(cyl(0.12, 2.5, 8), mat(PRODUCTS.gas.color), g, -1.4, 0.5, 0); inj.rotation.z = Math.PI / 2;
-    mesh(box(0.7, 0.9, 0.6), mat(COL.body), g, -2.4, 0.7, 0);
-  }
-  return {
-    g, w: lift === "Rod Pump" ? 7.5 : 4.5, d: 3.6, h: lift === "Rod Pump" ? 5 : 2.6, accent: [a],
-    ports: { out: new THREE.Vector3(0, 0.5, 0) },
-    update(v) { spm = v[`${node.tag}.STATUS`] === "Producing" ? (+v[`${node.tag}.SPM`] || 6) : 0; },
-    tick: tick && (dt => tick(dt)),
-  };
-}
-
-function generic(node) {
-  const g = new THREE.Group(), a = accentMat();
-  mesh(box(3, 2.4, 3), mat(COL.body), g, 0, 1.2, 0);
-  mesh(box(3.05, 0.4, 3.05), a, g, 0, 0.5, 0, { outline: false });
-  return { g, w: 3.5, d: 3.5, h: 2.4, accent: [a] };
-}
-
-function build(node) {
-  switch (node.template) {
-    case "Tank": return tank(node);
-    case "Atmospheric Column": return column(node, false);
-    case "Vacuum Column": return column(node, true);
-    case "Fired Heater": return heater(node);
-    case "Pump": return pump(node);
-    case "Separator": return node.id.endsWith("V-301") ? hvessel(node, 3.2, 0.9) : hvessel(node, 5, 1.15);
-    case "Desalter": return hvessel(node, 6, 1.3, (g, y, r) => mesh(box(1.2, 0.8, 1), mat(COL.dark), g, 0, y + r + 0.4, 0));
-    case "Reactor": return reactor(node);
-    case "Compressor": return compressor(node);
-    case "Vacuum Ejector System": return ejector(node);
-    case "Boiler": return boiler(node);
-    case "Cooling Tower": return coolingTower(node);
-    case "Pipeline": return pipeline(node);
-    default: return node.template.startsWith("Well") ? well(node) : generic(node);
+// ------------------------------------------------------------------ equipment
+// footprint and height of each equipment model, used by the layout
+const tankDims = p => ({ r: Math.max(2.6, Math.min(6.2, (p.Diameter || 40) * 0.3048 * 0.3)), h: Math.max(6, (p["Max Fill Height"] || 48) * 0.3048 * 0.55) });
+function sizeOf(node) {
+  const id = node.id, t = node.template;
+  switch (t) {
+    case "Tank": { const { r, h } = tankDims(node.props); return { w: 2 * r + 1, d: 2 * r + 1, h }; }
+    case "Atmospheric Column": return { w: 4.9, d: 4.9, h: 26.5 };
+    case "Vacuum Column": return { w: 5.8, d: 5.8, h: 19.9 };
+    case "Fired Heater": return { w: 5.5, d: 4.6, h: 14.5 };
+    case "Pump": return { w: 3.8, d: 2, h: 1.9 };
+    case "Separator": return id.endsWith("V-301") ? { w: 5.6, d: 2.8, h: 2.7 } : { w: 7.9, d: 3.3, h: 3.2 };
+    case "Desalter": return { w: 9.2, d: 3.6, h: 3.5 };
+    case "Reactor": return { w: 4.7, d: 4.7, h: 12.6 };
+    case "Compressor": return { w: 5.4, d: 3, h: 3.3 };
+    case "Vacuum Ejector System": return { w: 3.2, d: 2.4, h: 6.8 };
+    case "Boiler": return { w: 7, d: 4, h: 9.8 };
+    case "Cooling Tower": return { w: 10.5, d: 5, h: 6.2 };
+    case "Pipeline": return { w: 17, d: 2, h: 1.5, ports: { out: { x: 8, y: 0.9, z: 0 }, in: { x: -8, y: 0.9, z: 0 } } };
+    default:
+      if (t.startsWith("Well")) { const rod = node.props["Lift Method"] === "Rod Pump"; return { w: rod ? 7.5 : 4.5, d: 3.6, h: rod ? 5 : 2.6, ports: { out: { x: 0, y: 0.5, z: 0 } } }; }
+      return { w: 3.5, d: 3.5, h: 2.4 };
   }
 }
 
-// ------------------------------------------------------------------ layout from the AF tree
-// Process areas sit in a row in AF order (which is the flow order); a pipe rack runs behind them and
-// the utilities sit behind the rack. Units are pads inside their area, equipment sits on its unit pad.
-const GAP = 2.6, PAD = 2.6, AREA_GAP = 9, RACK_GAP = 5;
-
-let site = null;               // current site: { code, root, byId, items, pipes, ... }
-
-function slab(w, d, h, color, parent, x, z, y = 0) {
-  const m = mesh(box(w, h, d), mat(color), parent, x, y + h / 2, z, { outline: false });
-  decorate(m);
-  return m;
-}
-
-function layoutWellfield(wc) {
-  const wells = wc.children, n = wells.length;
-  const lats = wells.map(w => w.node.props["Location|Latitude"]), lons = wells.map(w => w.node.props["Location|Longitude"]);
-  const la0 = Math.min(...lats), la1 = Math.max(...lats), lo0 = Math.min(...lons), lo1 = Math.max(...lons);
-  const S = Math.max(26, Math.min(40, Math.sqrt(n) * 12));
-  const span = Math.max(la1 - la0, (lo1 - lo0) * Math.cos(la0 * Math.PI / 180)) || 1;
-  // real relative positions, squeezed into a square, then pushed apart so the models don't touch
-  let pts = wells.map((w, i) => [((lons[i] - (lo0 + lo1) / 2) * Math.cos(la0 * Math.PI / 180)) / span * S, -((lats[i] - (la0 + la1) / 2)) / span * S]);
-  for (let it = 0; it < 60; it++) for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
-    const dx = pts[j][0] - pts[i][0], dz = pts[j][1] - pts[i][1], dd = Math.hypot(dx, dz) || 0.01, min = 8.5;
-    if (dd < min) { const k = (min - dd) / 2 / dd; pts[i][0] -= dx * k; pts[i][1] -= dz * k; pts[j][0] += dx * k; pts[j][1] += dz * k; }
+function drawEquipment(it) {
+  const n = it.node, t = n.template, x = it.wx, z = it.wz, y = GROUND, v = ctx.values;
+  const acc = LEVEL_HEX[statusOf(it).level];
+  cur = n.id;
+  if (t === "Tank") {
+    const { r, h } = tankDims(n.props), prod = PRODUCTS[TANK_PRODUCT[n.props.Product] || "crude"], fr = tankFraction(n);
+    cylV(x, y, z, r, h, COL.body, { cap: false });
+    cylV(x, y, z, r + 0.04, h * fr, prod.color, { cap: fr > 0.97 });
+    cylV(x, y + h, z, r + 0.1, 0.5, COL.body2);
+  } else if (t === "Atmospheric Column" || t === "Vacuum Column") {
+    const vac = t === "Vacuum Column", r = vac ? 1.9 : 1.45, h = vac ? 16 : 23;
+    cylV(x, y, z, r * 1.08, 2, COL.body2);
+    if (vac) { cylV(x, y + 2, z, r * 0.7, h * 0.45, COL.body, { cap: false }); cylV(x, y + 2 + h * 0.45, z, r, h * 0.55, COL.body, { dome: true }); }
+    else cylV(x, y + 2, z, r, h, COL.body, { dome: true });
+    cylV(x, y + 2 + h * 0.55, z, r + 0.06, 0.6, acc, { cap: false });
+  } else if (t === "Fired Heater") {
+    box(x, y, z, 5, 0.6, 4.2, COL.body2);
+    box(x, y + 0.6, z, 4.4, 5.5, 3.6, COL.body);
+    band(x, y + 0.95, z, 4.45, 0.5, 3.65, acc);
+    box(x, y + 6.1, z, 2.4, 1.4, 2.2, COL.body);
+    cylV(x, y + 7.5, z, 0.5, 7, COL.body2);
+    if (+v[`${n.tag}.QFG`] > 1) facePatch(x, z, 2.2, 1.8, y + 2.1, y + 2.6, 1.5, "#ff9a3c");    // firebox glow
+  } else if (t === "Pump") {
+    box(x, y, z, 3.4, 0.35, 1.5, COL.dark);
+    cylH(x - 0.7, y + 0.95, z, 0.5, 1.5, "x", acc);
+    cylV(x + 0.85, y + 0.35, z, 0.55, 1.2, COL.body);
+  } else if (t === "Separator" || t === "Desalter") {
+    const small = n.id.endsWith("V-301"), len = t === "Desalter" ? 6 : small ? 3.2 : 5, r = t === "Desalter" ? 1.3 : small ? 0.9 : 1.15, cy = y + r + 0.9;
+    for (const dx of [-len * 0.32, len * 0.32]) box(x + dx, y, z, 0.5, r + 0.9, r * 1.5, COL.body2);
+    cylH(x, cy, z, r, len, "x", COL.body, { caps: r * 0.9 });
+    cylH(x, cy, z, r + 0.05, 0.4, "x", acc);
+    if (t === "Desalter") box(x, cy + r - 0.1, z, 1.2, 0.8, 1, COL.dark);
+  } else if (t === "Reactor") {
+    cylV(x, y, z, 1.4, 2.4, COL.body2);
+    cylV(x, y + 2.4, z, 1.35, 8.8, COL.body, { dome: true });
+    cylV(x, y + 2.4 + 4.5, z, 1.4, 0.5, acc, { cap: false });
+  } else if (t === "Compressor") {
+    box(x, y, z, 5, 0.4, 2.6, COL.dark);
+    box(x - 1.2, y + 0.4, z, 2.3, 2.1, 2.1, acc);
+    cylH(x + 1.3, y + 1.3, z, 0.85, 2.2, "x", COL.body);
+  } else if (t === "Vacuum Ejector System") {
+    cylV(x, y, z, 0.65, 3, COL.body);
+    for (const dx of [-1, 1]) box(x + dx, y, z, 0.25, 5, 1.8, COL.steel);
+    box(x, y + 5, z, 2.5, 0.15, 2, COL.steel);
+    cylH(x, y + 5.6, z, 0.32, 2.6, "x", COL.body);
+    cylH(x, y + 6.4, z, 0.26, 2.6, "x", acc);
+  } else if (t === "Boiler") {
+    box(x, y, z, 6.5, 3.8, 3.6, COL.body);
+    band(x, y + 0.35, z, 6.55, 0.5, 3.65, acc);
+    cylH(x, y + 4.5, z, 0.7, 4.2, "x", COL.body2, { caps: 0.6 });
+    cylV(x + 2.6, y + 3.8, z - 1, 0.42, 6, COL.body2);
+  } else if (t === "Cooling Tower") {
+    box(x, y, z, 10, 0.6, 4.6, COL.water);
+    box(x, y + 0.6, z, 9.4, 4, 4, COL.body);
+    for (const dx of [-3.1, 0, 3.1]) cylV(x + dx, y + 4.6, z, 1.35, 1.2, acc);
+  } else if (t === "Pipeline") {
+    for (let dx = -7; dx <= 7; dx += 2.5) box(x + dx, y, z, 0.3, 0.5, 1.2, COL.dark);
+    cylH(x, y + 0.9, z, 0.4, 16, "x", COL.body2);
+  } else if (t.startsWith("Well")) {
+    const lift = n.props["Lift Method"];
+    box(x, y, z, 3.2, 0.25, 3.2, COL.cellar);
+    cylV(x, y + 0.25, z, 0.32, 1.8, COL.body2);
+    cylV(x, y + 1.85, z, 0.42, 0.35, acc);
+    if (lift === "Rod Pump") {
+      const bx = x - 2.6;
+      box(bx + 1.2, y, z, 5.5, 0.35, 1.3, COL.dark);
+      box(bx - 1.7, y + 0.35, z, 1.3, 0.9, 1.1, COL.body2);
+      box(bx + 1.6, y + 0.35, z, 0.25, 3.4, 1.0, COL.dark);
+      box(bx + 2.1, y + 3.75, z, 5.2, 0.38, 0.38, acc);
+      box(bx + 4.75, y + 2.9, z, 0.5, 1.3, 0.5, COL.body2);
+    } else if (lift === "ESP") box(x - 2.2, y + 0.25, z, 0.9, 1.8, 0.5, COL.body);
+    else if (lift === "PCP") box(x + 0.4, y + 2.2, z, 1.2, 0.7, 0.7, acc);
+    else if (lift === "Gas Lift") box(x - 2.2, y + 0.25, z, 0.7, 0.9, 0.6, COL.body);
+  } else {
+    box(x, y, z, 3, 2.4, 3, COL.body);
+    band(x, y + 0.3, z, 3.05, 0.4, 3.05, acc);
   }
-  const xs = pts.map(p => p[0]), zs = pts.map(p => p[1]);
-  const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2;
-  wells.forEach((w, i) => { w.x = pts[i][0] - cx; w.z = pts[i][1] - cz; });
-  wc.w = Math.max(...xs) - Math.min(...xs) + 10; wc.d = Math.max(...zs) - Math.min(...zs) + 8;
+  cur = null;
 }
 
-function layoutUnit(wc) {
-  if (wc.node.template === "Wellfield") return layoutWellfield(wc);
-  const eqs = wc.children;
-  if (!eqs.length) { wc.w = 8; wc.d = 8; return; }
-  const cols = wc.node.template === "Storage Zone" && eqs.length > 2 ? 2 : eqs.length;
-  const rows = Math.ceil(eqs.length / cols);
-  const colW = Array.from({ length: cols }, (_, c) => Math.max(...eqs.filter((_, i) => i % cols === c).map(e => e.part.w)));
-  const rowD = Array.from({ length: rows }, (_, r) => Math.max(...eqs.filter((_, i) => Math.floor(i / cols) === r).map(e => e.part.d)));
-  const W = colW.reduce((a, b) => a + b, 0) + GAP * (cols - 1), D = rowD.reduce((a, b) => a + b, 0) + GAP * (rows - 1);
-  eqs.forEach((e, i) => {
-    const c = i % cols, r = Math.floor(i / cols);
-    e.x = -W / 2 + colW.slice(0, c).reduce((a, b) => a + b, 0) + GAP * c + colW[c] / 2;
-    e.z = -D / 2 + rowD.slice(0, r).reduce((a, b) => a + b, 0) + GAP * r + rowD[r] / 2;
-  });
-  wc.w = W + 2 * PAD; wc.d = D + 2 * PAD;
-}
-
-function layoutArea(area) {
-  area.children.forEach(layoutUnit);
-  const W = area.children.reduce((a, c) => a + c.w, 0) + GAP * (area.children.length - 1);
-  let x = -W / 2;
-  for (const c of area.children) { c.x = x + c.w / 2; c.z = 0; x += c.w + GAP; }
-  area.w = W + 2 * PAD; area.d = Math.max(...area.children.map(c => c.d)) + 2 * PAD + 3;
-}
-
-function buildSite(code) {
-  const root = P.sites[code], byId = {}, items = [], ticks = [];
-  const group = new THREE.Group();
-  // tree of layout nodes mirroring AF
-  const wrap = (node, depth, parent) => {
-    const it = { node, depth, parent, children: [], x: 0, z: 0, w: 0, d: 0 };
-    byId[node.id] = it; items.push(it);
-    if (depth >= 3) { it.part = build(node); bake(it.part.g); }
-    it.children = node.children.map(c => wrap(c, depth + 1, it));
-    return it;
-  };
-  const top = wrap(root, 0, null);
-  const areas = top.children, utilities = areas.filter(a => a.node.name === "Utilities"), process = areas.filter(a => !utilities.includes(a));
-  areas.forEach(layoutArea);
-  const rowW = process.reduce((a, c) => a + c.w, 0) + AREA_GAP * (process.length - 1);
-  const rowD = Math.max(...process.map(a => a.d));
-  let x = -rowW / 2;
-  for (const a of process) { a.x = x + a.w / 2; a.z = (rowD - a.d) / 2 * 0; x += a.w + AREA_GAP; }
-  const rackZ = -rowD / 2 - RACK_GAP;
-  const utilW = utilities.reduce((a, c) => a + c.w, 0);
-  // utilities behind the rack, centred on the distillation area (their main consumer)
-  const cd = process.find(a => a.node.name === "Crude Distillation") || process[0];
-  x = cd.x - utilW / 2;
-  for (const a of utilities) { a.x = x + a.w / 2; a.z = rackZ - RACK_GAP - 6 - a.d / 2; x += a.w + AREA_GAP; }
-
-  // place meshes; world position = area + unit + equipment offsets
-  for (const a of areas) {
-    a.wx = a.x; a.wz = a.z;
-    a.mesh = slab(a.w, a.d, 0.5, COL.slab, group, a.wx, a.wz);
-    for (const u of a.children) {
-      u.wx = a.wx + u.x; u.wz = a.wz + u.z - 1.2;
-      u.mesh = slab(u.w, u.d, 0.3, u.node.template === "Wellfield" ? 0xe2ecd9 : COL.pad, group, u.wx, u.wz, 0.5);
-      for (const e of u.children) {
-        e.wx = u.wx + e.x; e.wz = u.wz + e.z;
-        e.part.g.position.set(e.wx, 0.8, e.wz);
-        group.add(e.part.g);
-        if (e.part.tick) ticks.push(e.part.tick);
-      }
+// pipes are cut into short pieces so each piece sorts correctly against the equipment around it
+function drawPipe(p, i) {
+  const pr = PRODUCTS[p.product], still = !p.speed, fill = still ? mix(pr.color, "#b8c0c6", 0.6) : pr.color;
+  const w = 2 * pr.r, dash = light(pr.color, 0.55);
+  const dur = p.speed ? (3.4 / (p.speed * 2.2)).toFixed(2) : 0;
+  let run = 0;
+  for (let k = 1; k < p.pts.length; k++) {
+    const A = p.pts[k - 1], B = p.pts[k], len = Math.hypot(B.x - A.x, B.y - A.y, B.z - A.z);
+    const pieces = Math.max(1, Math.ceil(len / 5));
+    for (let j = 0; j < pieces; j++) {
+      const t0 = j / pieces, t1 = (j + 1) / pieces;
+      const a = [A.x + (B.x - A.x) * t0, A.y + (B.y - A.y) * t0, A.z + (B.z - A.z) * t0];
+      const b = [A.x + (B.x - A.x) * t1, A.y + (B.y - A.y) * t1, A.z + (B.z - A.z) * t1];
+      const s = P(...a), e = P(...b), d = `M${f(s[0])},${f(s[1])}L${f(e[0])},${f(e[1])}`;
+      track([s, e]);
+      push(depthOf((a[0] + b[0]) / 2, (a[2] + b[2]) / 2) + 0.001,
+        `<path class="po" d="${d}" stroke-width="${f(w + 0.32)}"/><path d="${d}" stroke="${fill}" stroke-width="${f(w)}"/>` +
+        (still ? "" : `<path class="pd" d="${d}" stroke="${dash}" stroke-width="${f(w * 0.55)}" style="--o0:${f(run + len * t0)}px;--dur:${dur}s"/>`),
+        ` data-pipe="${i}"`);
+    }
+    run += len;
+    if (k < p.pts.length - 1) {
+      const [jx, jy] = P(B.x, B.y, B.z);
+      push(depthOf(B.x, B.z) + 0.002, `<circle class="o" cx="${f(jx)}" cy="${f(jy)}" r="${f(pr.r)}" fill="${fill}"/>`, ` data-pipe="${i}"`);
     }
   }
-  // pickable meshes point back to their layout node
-  for (const it of items) {
-    const obj = it.part ? it.part.g : it.mesh;
-    if (obj) obj.traverse(o => { if (o.isMesh && o.material !== outlineMat) o.userData.item = it; });
-  }
+}
 
-  // ---------------------------------------------------------------- pipes
-  const pipes = [], pipeGroup = new THREE.Group(); group.add(pipeGroup);
-  const S = id => byId[`${code}-${id}`];
-  const portOf = (it, frac, toward) => {
-    const pt = it.part, base = new THREE.Vector3(it.wx, 0.8, it.wz);
-    if (pt.ports) return base.add((toward === "in" ? pt.ports.in : pt.ports.out) || pt.ports.out);
-    const y = Math.max(0.9, pt.h * frac);
-    const face = it.wz > rackZ ? -1 : 1;                // the side facing the pipe rack
-    return base.add(new THREE.Vector3(0, y, face * pt.d / 2 * 0.9));
+// ------------------------------------------------------------------ scene
+let site = null;
+const labelsOf = [];
+function draw() {
+  prims = []; seq = 0; bounds = [Infinity, Infinity, -Infinity, -Infinity]; itemBounds.clear();
+  const ground = [], labels = [];
+  // slabs first: areas, then unit pads on top of them
+  const slab = (it, h, y0, color) => {
+    cur = it.node.id;
+    const before = prims.length;
+    box(it.wx, y0, it.wz, it.w, h, it.d, color, "slab");
+    ground.push(...prims.splice(before));
+    cur = null;
   };
-  let lane = 0;
-  const joints = {};                                  // product -> joint spheres, merged at the end
-  const addPipe = (pts, product, flowTag, from, to) => {
-    const pr = PRODUCTS[product], tex = flowTexture(pr.color), segs = [];
-    pts = pts.filter((p, i) => !i || p.distanceTo(pts[i - 1]) > 1e-3);
-    let run = 0;
-    for (let i = 1; i < pts.length; i++) {
-      const a = pts[i - 1], b = pts[i], len = a.distanceTo(b);
-      // open cylinder along a -> b; texture u = distance along the pipe so the dashes flow continuously
-      const g = new THREE.CylinderGeometry(pr.r, pr.r, len, 8, 1, true), pos = g.attributes.position, uv = g.attributes.uv;
-      for (let k = 0; k < pos.count; k++) uv.setX(k, (run + (pos.getY(k) / len + 0.5) * len) / 2.2);
-      g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize()));
-      g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
-      segs.push(g); run += len;
-      if (i < pts.length - 1) (joints[product] ||= []).push(new THREE.SphereGeometry(pr.r * 1.02, 8, 6).translate(b.x, b.y, b.z));
-    }
-    const m = new THREE.MeshLambertMaterial({ map: tex });
-    const tube = new THREE.Mesh(mergeGeometries(segs), m);
-    tube.add(new THREE.Mesh(tube.geometry, outlineMat));
-    pipeGroup.add(tube);
-    const pipe = { product, flowTag, tex, mat: m, from, to, speed: 0, flow: null };
-    tube.userData.pipe = pipe;
-    pipes.push(pipe);
-  };
-  // flowlines from each well to the production separator, along the ground
-  const sep = S("SEP-001"), wf = byId[`${code}-WF`];
-  // a header along the front of the wellfield, into the west end of the separator
-  if (sep && wf) for (const w of wf.children) {
-    const l = lane++, a = portOf(w, 0, "out"), y = 1.1;
-    const b = new THREE.Vector3(sep.wx - sep.part.w / 2 + 0.4, 0.8 + 1.6, sep.wz);
-    const zf = wf.wz + wf.d / 2 - 1.2 - (l % 4) * 0.35, xw = b.x - 1.2 - (l % 4) * 0.35;
-    addPipe([a, new THREE.Vector3(a.x, y, a.z), new THREE.Vector3(a.x, y, zf), new THREE.Vector3(xw, y, zf), new THREE.Vector3(xw, b.y, b.z), b], "crude", `${w.node.tag}.QO`, w, sep);
+  for (const a of site.areas) slab(a, 0.5, 0, COL.slab);
+  for (const a of site.areas) for (const u of a.children) slab(u, 0.3, 0.5, u.node.template === "Wellfield" ? COL.field : COL.pad);
+  ground.sort((p, q) => p.d - q.d || p.s - q.s);
+  for (const it of site.items) if (it.depth >= 3) drawEquipment(it);
+  site.pipes.forEach(drawPipe);
+  for (const rk of site.racks) for (let rx = rk.x0; rx <= rk.x1; rx += 8) {
+    for (const z of [rk.z + 2.2, rk.z - 5.6]) box(rx, 0, z, 0.35, 11, 0.35, COL.steel);
+    box(rx, 10.5, rk.z - 1.7, 0.3, 0.3, 8.2, COL.steel);
   }
-  // everything else over the pipe rack
-  lane = 0;
-  for (const [f, t, product, [fid, attr], ff = 0.5, tf = 0.5] of FLOWS) {
-    const A = S(f), B = S(t), src = S(fid);
-    if (!A || !B || !src) continue;
-    const a = portOf(A, ff, "out"), b = portOf(B, tf, "in"), l = lane++;
-    const zr = rackZ + 1.4 - (l % 7) * 0.75;
-    const H = 7 + (l % 5) * 0.8;
-    addPipe([a, new THREE.Vector3(a.x, a.y, zr), new THREE.Vector3(a.x, H, zr), new THREE.Vector3(b.x, H, zr), new THREE.Vector3(b.x, b.y, zr), b], product, `${src.node.tag}.${attr}`, A, B);
+  const cn = site.connector;                     // cross rack between the two rows
+  if (cn) for (let rz = cn.z0 + 4; rz <= cn.z1 - 4; rz += 8) {
+    for (const x of [cn.x - 1, cn.x + 6]) box(x, 0, rz, 0.35, 11, 0.35, COL.steel);
+    box(cn.x + 2.5, 10.5, rz, 8.2, 0.3, 0.3, COL.steel);
   }
-  for (const [product, geos] of Object.entries(joints)) {
-    const j = new THREE.Mesh(mergeGeometries(geos), mat(PRODUCTS[product].color));
-    j.add(new THREE.Mesh(j.geometry, outlineMat));
-    pipeGroup.add(j);
-  }
-  // the rack itself
-  const rack = new THREE.Group();
-  const x0 = process[0].x - process[0].w / 2 + 6, x1 = process.at(-1).x + process.at(-1).w / 2 - 4;
-  for (let rx = x0; rx <= x1; rx += 8) {
-    for (const z of [rackZ + 2.2, rackZ - 5.6]) mesh(box(0.35, 11, 0.35), mat(COL.steel), rack, rx, 5.5, z, { outline: false });
-    for (const y of [6.6, 10.5]) mesh(box(0.3, 0.3, 8.2), mat(COL.steel), rack, rx, y, rackZ - 1.7, { outline: false });
-  }
-  bake(rack); group.add(rack);
-
-  // ---------------------------------------------------------------- labels
-  for (const it of items) {
+  prims.sort((p, q) => p.d - q.d || p.s - q.s);
+  // labels on top of everything
+  for (const it of site.items) {
     if (it.depth === 0) continue;
     const kind = it.depth === 1 ? "area" : it.depth === 2 ? "wc" : "eq";
-    const div = el("div", { class: `lab ${kind}` }, it.node.name);
-    const lab = new CSS2DObject(div);
-    if (kind === "area") lab.position.set(it.wx, 1, it.wz + it.d / 2);
-    else if (kind === "wc") lab.position.set(it.wx, 1, it.wz + it.d / 2 - 0.6);
-    else lab.position.set(it.wx, 0.8 + it.part.h + 1.2, it.wz);
-    if (kind === "area") lab.center.set(0.5, 0);
-    group.add(lab); it.label = lab; it.labelDiv = div;
+    const [lx, ly] = kind === "eq" ? P(it.wx, GROUND + it.part.h + 1.2, it.wz) : P(it.wx, 1, it.wz + it.d / 2 - (kind === "wc" ? 0.6 : 0));
+    labels.push(`<text class="lab ${kind}" data-lab="${it.node.id}" x="${f(lx)}" y="${f(ly)}">${esc(it.node.name)}</text>`);
   }
-
-  scene.add(group);
-  const bbox = new THREE.Box3().setFromObject(group);
-  return { code, root: top, byId, items, pipes, group, ticks, bbox, rackZ };
-}
-
-function flowTexture(color) {
-  const c = document.createElement("canvas"); c.width = 64; c.height = 4;
-  const g = c.getContext("2d"), col = new THREE.Color(color);
-  g.fillStyle = `#${col.getHexString()}`; g.fillRect(0, 0, 64, 4);
-  g.fillStyle = `#${col.clone().lerp(new THREE.Color(0xffffff), 0.55).getHexString()}`; g.fillRect(0, 0, 18, 4);
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-}
-
-function disposeSite() {
-  if (!site) return;
-  site.group.traverse(o => {
-    if (o.isCSS2DObject) o.element.remove();
-    if (o.geometry) o.geometry.dispose();
-    if (o.material && o.material.map) o.material.map.dispose();
-  });
-  scene.remove(site.group);
-  site = null;
-}
-
-// ------------------------------------------------------------------ live values
-let values = {}, asOf = null, live = false;
-const statusAttr = it => (P.templates[it.node.template] || []).find(a => /Status$/.test(a[0]));
-function statusOf(it) {
-  for (let n = it; n; n = n.parent) {
-    const a = statusAttr(n);
-    if (a) { const v = values[`${n.node.tag}.${a[1]}`]; return { text: v, level: STATUS_LEVEL[v] || "planned", own: n === it }; }
+  svg.innerHTML = `<defs>${[...grads.values()].join("")}</defs><g class="ground">${ground.map(p => p.t).join("")}</g><g class="things">${prims.map(p => p.t).join("")}</g><g class="labels">${labels.join("")}</g>`;
+  // areas and units cover their children too
+  for (const it of site.items) if (it.depth > 0 && it.depth < 3) {
+    const b = itemBounds.get(it.node.id) || [Infinity, Infinity, -Infinity, -Infinity];
+    const add = n => { const c = itemBounds.get(n.node.id); if (c) { grow(b, c[0], c[1]); grow(b, c[2], c[3]); } n.children.forEach(add); };
+    it.children.forEach(add);
+    itemBounds.set(it.node.id, b);
   }
-  return { text: null, level: "planned", own: false };
+  svg.classList.toggle("moving", motion);
+  mark("sel", ctx.selected); mark("hov", hovered);
+  if (site) markPipes();
 }
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-function applyValues() {
-  if (!site) return;
-  invalidate();
-  for (const it of site.items) {
-    if (!it.part) continue;
-    const st = statusOf(it);
-    it.part.accent.forEach(m => m.color.set(LEVEL_COL[st.level]));
-    it.part.update && it.part.update(values);
-  }
-  for (const p of site.pipes) {
-    const f = +values[p.flowTag];
-    p.flow = Number.isFinite(f) ? f : null;
-    const ref = p.product === "crude" || p.product === "residue" ? SITES[site.code].capacity * 0.6
-      : ["gasoline", "jet", "diesel"].includes(p.product) ? SITES[site.code].capacity * 0.2 : null;
-    p.speed = !(f > 0.5) ? 0 : ref ? 0.25 + 1.6 * Math.min(1, f / ref) : 0.7;
-    p.mat.color.set(p.speed ? 0xffffff : 0xb8c0c6);
-  }
-  $("asof").textContent = asOf ? `${live ? "Live" : "Demo data"} · ${new Date(asOf).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : "";
-  renderTreeDots();
-  if (selected) renderInfo(selected);
+// ------------------------------------------------------------------ view box: pan, zoom, fit
+// While you pan or zoom, the drawing already on screen is just moved and scaled as one layer (no
+// repaint); the real view box is set, and the SVG redrawn sharp, once the gesture stops.
+let vb = { x: 0, y: 0, w: 100, h: 100 }, drawn = vb, fit0 = 1, anim = null, lastScale = 1, settle = null;
+const scale = () => svg.clientWidth / vb.w;              // screen px per unit
+function setVB(v, { now = false } = {}) {
+  vb = v; lastScale = scale();
+  clearTimeout(settle);
+  if (now) return commitVB();
+  const k = drawn.w / vb.w, s1 = lastScale;
+  svg.style.transform = `translate(${f((drawn.x - vb.x) * s1)}px, ${f((drawn.y - vb.y) * s1)}px) scale(${k.toFixed(5)})`;
+  settle = setTimeout(commitVB, 140);
 }
-
-async function refresh() {
-  try {
-    const r = await state.source.tagValues(site.code);
-    values = r.values; asOf = r.asOf; live = r.live;
-    applyValues();
-  } catch (e) { $("asof").textContent = `Could not read PI values: ${e.message}`; }
+function commitVB() {
+  drawn = vb;
+  svg.setAttribute("viewBox", `${f(vb.x)} ${f(vb.y)} ${f(vb.w)} ${f(vb.h)}`);
+  svg.style.transform = "";
+  const k = 1 / scale(), z = scale() / fit0 * Math.min(1, window.innerWidth / 1100);
+  svg.style.setProperty("--k", k.toFixed(4));
+  svg.dataset.tier = z > 3.6 ? 2 : z > 1.7 ? 1 : 0;
 }
-
-// ------------------------------------------------------------------ camera
-let fly = null;
-function fitBox(b, fill = 0.82) {
-  // extent of the box as seen by the camera -> zoom; ignore what the panels cover
-  const pts = [], m = camera.matrixWorldInverse;
-  for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) pts.push(new THREE.Vector3(x, y, z).applyMatrix4(m));
-  const w = Math.max(...pts.map(p => p.x)) - Math.min(...pts.map(p => p.x)), h = Math.max(...pts.map(p => p.y)) - Math.min(...pts.map(p => p.y));
-  const vw = camera.right - camera.left, vh = camera.top - camera.bottom;
-  const { left, right, top, bottom } = freeArea();
-  const fw = (right - left) / window.innerWidth, fh = (bottom - top) / window.innerHeight;
-  return Math.max(controls.minZoom, Math.min(controls.maxZoom, Math.min(vw * fw / w, vh * fh / h) * fill));
-}
-function freeArea() {
-  const hdr = document.querySelector("header.top").getBoundingClientRect(), ftr = document.querySelector("footer.bottom").getBoundingClientRect();
-  let left = 0, right = window.innerWidth;
-  const tree = $("tree"), info = $("info");
-  if (window.innerWidth > 900) {
-    if (getComputedStyle(tree).display !== "none") left = tree.getBoundingClientRect().right;   // fixed: no offsetParent
-    if (!info.hidden) right = info.getBoundingClientRect().left;
-  }
-  let bottom = ftr.top;
-  if (window.innerWidth <= 900 && !info.hidden) bottom = Math.min(bottom, info.getBoundingClientRect().top);
-  return { left, right, top: hdr.bottom, bottom };
-}
-function flyTo(b, { instant = false, fill, dir } = {}) {
-  if (dir) { camera.position.copy(controls.target).addScaledVector(dir, 600); camera.lookAt(controls.target); camera.updateMatrixWorld(); }
-  const center = b.getCenter(new THREE.Vector3());
-  center.y = Math.min(center.y, 3);
-  const zoom = fitBox(b, fill);
-  // shift the target so the box sits in the middle of the free area, not under a panel
-  const { left, right, top, bottom } = freeArea();
-  const dx = ((left + right) / 2 - window.innerWidth / 2) / window.innerWidth * (camera.right - camera.left) / zoom;
-  const dy = ((top + bottom) / 2 - window.innerHeight / 2) / window.innerHeight * (camera.top - camera.bottom) / zoom;
-  const rightV = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0), upV = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
-  const target = center.clone().addScaledVector(rightV, -dx).addScaledVector(upV, dy);
-  const offset = camera.position.clone().sub(controls.target);
-  const from = fly ? fly.offNow : null;
-  if (instant || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    controls.target.copy(target); camera.position.copy(target).add(offset); camera.zoom = zoom; camera.updateProjectionMatrix(); return;
-  }
-  fly = { t0: performance.now(), from: controls.target.clone(), to: target, z0: camera.zoom, z1: zoom, offset, off0: dir ? turnFrom : offset, offNow: offset.clone() };
-}
-function stepFly(now) {
-  if (!fly) return;
-  invalidate();
-  const p = Math.min(1, (now - fly.t0) / 650), e = p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
-  controls.target.lerpVectors(fly.from, fly.to, e);
-  fly.offNow.copy(fly.off0).lerp(fly.offset, e).setLength(600);
-  camera.position.copy(controls.target).add(fly.offNow);
-  camera.zoom = Math.exp(Math.log(fly.z0) + (Math.log(fly.z1) - Math.log(fly.z0)) * e);
-  camera.updateProjectionMatrix();
-  if (p >= 1) fly = null;
-}
-let turnFrom = null;
-function homeView(instant) {
-  if (instant) {
-    controls.target.set(0, 0, 0); camera.position.copy(viewDir()).multiplyScalar(600); camera.zoom = 1;
-    camera.lookAt(controls.target); camera.updateProjectionMatrix(); camera.updateMatrixWorld();
-    flyTo(site.bbox, { instant: true, fill: 0.88 });
-    return;
-  }
-  turnFrom = camera.position.clone().sub(controls.target);       // animate back to the standard angle too
-  flyTo(site.bbox, { fill: 0.88, dir: viewDir() });
-}
-function itemBox(it) {
-  const obj = it.part ? it.part.g : null;
-  if (obj) return new THREE.Box3().setFromObject(obj).expandByScalar(4);
-  const b = new THREE.Box3();
-  const add = n => { if (n.part) b.union(new THREE.Box3().setFromObject(n.part.g)); else if (n.mesh) b.union(new THREE.Box3().setFromObject(n.mesh)); n.children.forEach(add); };
-  add(it);
-  return b.isEmpty() ? site.bbox : b.expandByScalar(2);
-}
-
-// ------------------------------------------------------------------ selection + panels
-let selected = null, hovered = null;
-const selRing = new THREE.LineLoop(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: COL.sel }));
-const hovRing = new THREE.LineLoop(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: COL.hover }));
-scene.add(selRing, hovRing);
-function ring(line, it) {
-  invalidate();
-  if (!it || it.depth === 0) { line.visible = false; return; }
-  const b = itemBox(it), y = it.depth >= 3 ? 0.85 : it.depth === 2 ? 0.84 : 0.55, m = it.depth >= 3 ? 0.5 : 0.2;
-  if (it.depth < 3) { b.min.set(it.wx - it.w / 2, 0, it.wz - it.d / 2); b.max.set(it.wx + it.w / 2, 0, it.wz + it.d / 2); }
-  const p = [[b.min.x + m, b.min.z + m], [b.max.x - m, b.min.z + m], [b.max.x - m, b.max.z - m], [b.min.x + m, b.max.z - m]];
-  line.geometry.setFromPoints(p.map(([x, z]) => new THREE.Vector3(x, y, z)));
-  line.visible = true;
-}
-
-function select(it, { fly: doFly = true } = {}) {
-  selected = it && it.depth > 0 ? it : null;
-  ring(selRing, selected);
-  for (const x of site.items) x.labelDiv && x.labelDiv.classList.toggle("on", x === selected && x.depth >= 3);
-  renderCrumbs(); renderTree(); updatePV();
-  const info = $("info");
-  if (selected) { renderInfo(selected); info.hidden = false; } else info.hidden = true;
-  if (window.innerWidth <= 900 && selected) $("tree").classList.remove("open");
-  try { history.replaceState(null, "", `#${site.code}${selected ? "/" + selected.node.id : ""}`); } catch (_) { /* sandboxed */ }
-  if (doFly) flyTo(selected ? itemBox(selected) : site.bbox, { fill: selected ? (selected.depth >= 3 ? 0.55 : 0.85) : 0.95 });
-  updateLabels(true);
-}
-
-const fmtV = v => typeof v === "number" ? fmt(v, Math.abs(v) < 10 && v !== 0 ? 1 : 0) : v ?? "—";
-function renderInfo(it) {
-  const n = it.node, st = statusOf(it), attrs = P.templates[n.template] || [];
-  const kind = ["Site", "Area", "Unit", "Equipment"][Math.min(3, it.depth)];
-  $("infoKind").textContent = kind === n.template ? kind : `${kind} · ${n.template}`;
-  const rows = attrs.filter(a => !/Status$|Scenario$/.test(a[0])).map(([name, suffix, uom]) => {
-    const v = values[`${n.tag}.${suffix}`];
-    return el("tr", {}, el("td", {}, name), el("td", {}, fmtV(typeof v === "number" ? v : v ?? null), uom ? el("small", {}, ` ${uom}`) : null));
-  });
-  const scen = values[`${n.tag}.SCEN`];
-  const props = Object.entries(n.props).filter(([k]) => !k.startsWith("Location"));
-  const kids = it.children;
-  $("infoBody").replaceChildren(...[
-    el("div", { class: "sec" }, el("h2", {}, n.name), el("div", { class: "meta" }, `${n.desc} · ${n.id}`),
-      st.text ? el("span", { class: "pill" }, el("i", { style: `background:${LEVEL_CSS[st.level]}` }), st.own ? st.text : `${it.parent.node.name}: ${st.text}`) : null,
-      scen && scen !== "Normal" ? el("div", { class: "meta" }, `Active scenario: ${scen}`) : null),
-    rows.length ? el("div", { class: "sec" }, el("h3", {}, "PI values"), el("table", {}, rows)) : null,
-    props.length ? el("div", { class: "sec" }, el("h3", {}, "Configuration"), el("table", {}, props.map(([k, v]) => el("tr", {}, el("td", {}, k), el("td", {}, fmtV(v)))))) : null,
-    kids.length ? el("div", { class: "sec" }, el("h3", {}, it.depth === 2 && n.template === "Wellfield" ? "Wells" : "Contains"),
-      el("div", { class: "kids" }, kids.map(k => el("button", { type: "button", onclick: () => select(k) }, k.node.name)))) : null,
-    el("div", { class: "sec" }, el("h3", {}, "AF path"), el("div", { class: "meta" }, `\\\\${CFG.piwebapi?.afServer}\\${M.database}\\${n.path}`)),
-  ].filter(Boolean));
-}
-
-function renderCrumbs() {
-  const c = $("crumbs"); c.replaceChildren();
-  const chain = []; for (let n = selected || site.root; n; n = n.parent) chain.unshift(n);
-  c.append(el("span", {}, M.company.replace(" S.A.", "")), el("span", {}, "›"));
-  chain.forEach((n, i) => { if (i) c.append(el("span", {}, "›")); c.append(el("button", { type: "button", onclick: () => select(n.depth ? n : null) }, n.node.name)); });
-  $("h1").textContent = `${SITES[site.code].name} plant`;
-}
-
-function updatePV() {
-  const pv = CFG.piVision || {}, a = $("pv");
-  const path = (selected || site.root).node.path;
-  const asset = `\\\\${CFG.piwebapi?.afServer}\\${M.database}\\${path}`;
-  const tpl = pv.elementDisplay || pv.siteDisplay;
-  const url = tpl ? tpl.replace("{asset}", encodeURIComponent(asset)) : pv.home;
-  a.hidden = !url; if (url) a.href = url;
-}
-
-// AF tree: areas open, units closed unless they hold the selection
-function renderTree() {
-  const open = new Set(); for (let n = selected; n; n = n.parent) open.add(n);
-  const li = it => {
-    const kids = it.children, isOpen = it.depth < 1 || open.has(it) || (it.depth === 1 && !selected);
-    const node = el("li", { class: kids.length && !isOpen ? "closed" : null });
-    const tw = el("button", { type: "button", class: "tw", disabled: !kids.length, "aria-label": kids.length ? `Expand ${it.node.name}` : null, "aria-expanded": kids.length ? String(isOpen) : null,
-      onclick: () => { node.classList.toggle("closed"); tw.textContent = node.classList.contains("closed") ? "▶" : "▼"; tw.setAttribute("aria-expanded", String(!node.classList.contains("closed"))); } }, kids.length ? (isOpen ? "▼" : "▶") : "");
-    const nm = el("button", { type: "button", class: `nm${it === selected ? " on" : ""}`, onclick: () => select(it.depth ? it : null), "aria-current": it === selected ? "true" : null },
-      el("i", { "data-dot": it.node.id }), el("span", {}, it.node.name));
-    node.append(el("div", {}, tw, nm));
-    if (kids.length) node.append(el("ul", {}, kids.map(li)));
-    return node;
+function fitTo(b, fill, { instant = false } = {}) {
+  const W = svg.clientWidth, H = svg.clientHeight, o = svg.getBoundingClientRect(), fa = freeArea();
+  const left = fa.left - o.left, right = fa.right - o.left, top = fa.top - o.top, bottom = fa.bottom - o.top;
+  const bw = Math.max(1, b[2] - b[0]), bh = Math.max(1, b[3] - b[1]);
+  const s = Math.min((right - left) / bw, (bottom - top) / bh) * fill;
+  const target = { w: W / s, h: H / s, x: (b[0] + b[2]) / 2 - ((left + right) / 2) / s, y: (b[1] + b[3]) / 2 - ((top + bottom) / 2) / s };
+  if (instant || window.matchMedia("(prefers-reduced-motion: reduce)").matches) { cancelAnimationFrame(anim); setVB(target, { now: true }); return; }
+  const from = { ...vb }, t0 = performance.now();
+  cancelAnimationFrame(anim);
+  const step = now => {
+    const p = Math.min(1, (now - t0) / 380), e = 1 - Math.pow(1 - p, 3);
+    setVB({ x: from.x + (target.x - from.x) * e, y: from.y + (target.y - from.y) * e, w: from.w + (target.w - from.w) * e, h: from.h + (target.h - from.h) * e });
+    if (p < 1) anim = requestAnimationFrame(step);
   };
-  $("treeBody").replaceChildren(el("ul", {}, li(site.root)));
-  renderTreeDots();
-  $("treeBody").querySelector(".nm.on")?.scrollIntoView({ block: "nearest" });
+  anim = requestAnimationFrame(step);
 }
-function renderTreeDots() {
-  for (const dot of $("treeBody").querySelectorAll("i[data-dot]")) {
-    const it = site.byId[dot.dataset.dot], a = statusAttr(it);
-    dot.style.background = a && values[`${it.node.tag}.${a[1]}`] != null ? LEVEL_CSS[STATUS_LEVEL[values[`${it.node.tag}.${a[1]}`]] || "planned"] : "transparent";
-  }
+function zoomAt(px, py, factor) {
+  const s = scale(), ns = Math.max(fit0 * 0.4, Math.min(fit0 * 40, s * factor)), k = s / ns;
+  const ux = vb.x + px / s, uy = vb.y + py / s;
+  setVB({ w: vb.w * k, h: vb.h * k, x: ux - (ux - vb.x) * k, y: uy - (uy - vb.y) * k });
+}
+const siteBounds = () => bounds;
+function home(instant) {
+  fitTo(siteBounds(), 0.94, { instant });
+  if (instant) { fit0 = scale(); setVB(vb, { now: true }); }      // label tiers are relative to the whole-site view
+}
+const boundsOf = it => itemBounds.get(it.node.id) || siteBounds();
+const pad = (b, p) => [b[0] - p, b[1] - p, b[2] + p, b[3] + p];
+
+// ------------------------------------------------------------------ selection, hover
+let hovered = null;
+function mark(cls, it) {
+  for (const e of svg.querySelectorAll(`.${cls}`)) e.classList.remove(cls);
+  if (!it) return;
+  for (const e of svg.querySelectorAll(`[data-id="${CSS.escape(it.node.id)}"], [data-lab="${CSS.escape(it.node.id)}"]`)) e.classList.add(cls);
+}
+function select(it, { fly = true } = {}) {
+  ctx.selected = it && it.depth > 0 ? it : null;
+  mark("sel", ctx.selected);
+  showSelection(select);
+  markPipes(); summary();
+  if (fly) ctx.selected ? fitTo(pad(boundsOf(ctx.selected), 3), ctx.selected.depth >= 3 ? 0.5 : 0.85) : home(false);
 }
 
-// labels: areas always, units and equipment once zoomed in, the hovered / selected one always
-let lastZoom = 0;
-function updateLabels(force) {
-  if (!site || (!force && Math.abs(camera.zoom - lastZoom) < 0.01)) return;
-  lastZoom = camera.zoom;
-  const z = camera.zoom * Math.min(1, window.innerWidth / 1100);
-  for (const it of site.items) {
-    if (!it.labelDiv) continue;
-    const show = it === selected || it === hovered || (it.depth === 1 && z < 3.2) || (it.depth === 2 && z > 1.4) || (it.depth >= 3 && z > 2.6);
-    it.labelDiv.classList.toggle("dim", !show);
-  }
-}
-
-// ------------------------------------------------------------------ picking
-const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
-function pick(e) {
-  const r = canvas.getBoundingClientRect();
-  ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-  ray.setFromCamera(ptr, camera);
-  for (const h of ray.intersectObject(site.group, true)) {
-    if (h.object.material === outlineMat || h.object.isLineSegments || h.object.isLine) continue;
-    if (h.object.userData.pipe) return { pipe: h.object.userData.pipe };
-    let o = h.object; while (o && !o.userData.item) o = o.parent;
-    if (o) return { item: o.userData.item };
-  }
-  return null;
-}
-const tip = $("tip");
-function onMove(e) {
-  if (!site || e.pointerType !== "mouse" || e.buttons) { tip.hidden = true; return; }
-  const h = pick(e), it = h?.item || null;
-  if (it !== hovered) { hovered = it; ring(hovRing, it !== selected ? it : null); updateLabels(true); }
-  canvas.style.cursor = h ? "pointer" : "";
-  if (h?.pipe) {
-    const p = h.pipe;
-    tip.replaceChildren(el("b", {}, PRODUCTS[p.product].label), `${p.from.node.name} → ${p.to.node.name}`, el("br"),
-      el("span", {}, p.flow == null ? "—" : `${fmt(p.flow)} ${p.product === "steam" ? "lb/h" : p.product === "water" ? "gpm" : p.product === "gas" ? "Mscf/d" : "bbl/d"}`));
-    tip.hidden = false;
-    tip.style.left = `${Math.min(window.innerWidth - tip.offsetWidth - 8, e.clientX + 14)}px`; tip.style.top = `${e.clientY + 14}px`;
-  } else tip.hidden = true;
-}
-let down = null;
-canvas.addEventListener("pointerdown", e => { down = [e.clientX, e.clientY]; fly = null; });
-canvas.addEventListener("pointerup", e => {
-  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return;
-  const h = pick(e);
-  if (h?.item) select(h.item.depth === 0 ? null : h.item);
-  else if (h?.pipe) select(h.pipe.from);
-  else if (selected) select(null, { fly: false });
+// ------------------------------------------------------------------ pointer: pan, pinch, click, hover
+const tip = $("tip"), ptrs = new Map();
+let downAt = null, moved = false;
+svg.addEventListener("pointerdown", e => {
+  svg.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+  if (ptrs.size === 1) { downAt = [e.clientX, e.clientY]; moved = false; }
+  cancelAnimationFrame(anim); tip.hidden = true;
 });
-canvas.addEventListener("pointermove", onMove);
-canvas.addEventListener("pointerleave", () => { tip.hidden = true; hovered = null; ring(hovRing, null); });
+svg.addEventListener("pointermove", e => {
+  const prev = ptrs.get(e.pointerId);
+  if (!prev) { onHover(e); return; }
+  if (ptrs.size === 1) {
+    const s = scale();
+    if (Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) moved = true;
+    if (moved) setVB({ ...vb, x: vb.x - (e.clientX - prev[0]) / s, y: vb.y - (e.clientY - prev[1]) / s });
+  } else if (ptrs.size === 2) {
+    moved = true;
+    const [o] = [...ptrs.entries()].filter(([id]) => id !== e.pointerId).map(([, p]) => p);
+    const d0 = Math.hypot(prev[0] - o[0], prev[1] - o[1]), d1 = Math.hypot(e.clientX - o[0], e.clientY - o[1]);
+    const r = svg.getBoundingClientRect();
+    zoomAt((e.clientX + o[0]) / 2 - r.left, (e.clientY + o[1]) / 2 - r.top, d1 / (d0 || 1));
+    const s = scale();
+    setVB({ ...vb, x: vb.x - (e.clientX - prev[0]) / 2 / s, y: vb.y - (e.clientY - prev[1]) / 2 / s });
+  }
+  ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+});
+const endPtr = e => {
+  if (!ptrs.has(e.pointerId)) return;
+  ptrs.delete(e.pointerId);
+  if (ptrs.size || moved || e.type === "pointercancel") return;
+  const t = document.elementFromPoint(e.clientX, e.clientY), g = t && t.closest("[data-id], [data-pipe]");
+  if (g?.dataset.id) select(site.byId[g.dataset.id]);
+  else if (g?.dataset.pipe) select(site.pipes[+g.dataset.pipe].from);
+  else if (ctx.selected) select(null, { fly: false });
+};
+svg.addEventListener("pointerup", endPtr);
+svg.addEventListener("pointercancel", endPtr);
+svg.addEventListener("wheel", e => {
+  e.preventDefault();
+  const r = svg.getBoundingClientRect();
+  zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0015)));
+}, { passive: false });
+function onHover(e) {
+  if (e.pointerType !== "mouse") return;
+  const g = e.target.closest && e.target.closest("[data-id], [data-pipe]");
+  const it = g?.dataset.id ? site.byId[g.dataset.id] : null;
+  if (it !== hovered) { hovered = it; mark("hov", it && it !== ctx.selected ? it : null); }
+  svg.style.cursor = g ? "pointer" : "";
+  if (g?.dataset.pipe) { tip.replaceChildren(...pipeTip(site.pipes[+g.dataset.pipe])); placeTip(tip, e); } else tip.hidden = true;
+}
+svg.addEventListener("pointerleave", () => { tip.hidden = true; hovered = null; mark("hov", null); });
+// keyboard: arrows pan, +/- zoom
+svg.addEventListener("keydown", e => {
+  const s = scale(), step = 60 / s;
+  const k = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+  if (k) { e.preventDefault(); setVB({ ...vb, x: vb.x + k[0], y: vb.y + k[1] }); }
+  else if (e.key === "+" || e.key === "=") zoomAt(svg.clientWidth / 2, svg.clientHeight / 2, 1.25);
+  else if (e.key === "-") zoomAt(svg.clientWidth / 2, svg.clientHeight / 2, 0.8);
+});
 
-// ------------------------------------------------------------------ page
-function legend() {
-  $("legend").replaceChildren(...Object.values(PRODUCTS).map(p => el("span", {}, el("i", { style: `background:#${new THREE.Color(p.color).getHexString()}` }), p.label)));
+// ------------------------------------------------------------------ data + page
+function applyValues() {
+  updatePipes();
+  draw();
+  $("asof").textContent = asOfText();
+  renderTreeDots(); summary();
+  if (ctx.selected) renderInfo(ctx.selected, select);
+}
+async function refresh() {
+  try { await fetchValues(); applyValues(); } catch (e) { $("asof").textContent = `Could not read PI values: ${e.message}`; }
 }
 
 function openSite(code, elementId) {
-  disposeSite();
-  site = buildSite(code);
+  site = ctx.site = layoutSite(code, sizeOf);
+  ctx.selected = null;
   $("site").value = code;
-  $("back").href = `topo.html#${code}`;
-  selected = null; values = state.source.name === "demo" ? { ...(state.data.sites[code].tags || {}) } : {};
-  homeView(true);
-  applyValues();
+  initialValues(code);
+  updatePipes(); draw();
+  home(true);
+  $("asof").textContent = asOfText();
   const it = elementId && site.byId[elementId];
-  if (it) select(it, { fly: true }); else select(null, { fly: false });
+  select(it || null, { fly: !!it });
   refresh();
 }
 
-// Motion (flowing pipes, pumpjacks, fans) can be switched off; it's off by default in low-power mode.
-let motion = !LOW;
-try { const m = localStorage.getItem("cp.plant.motion"); if (m) motion = m === "on"; } catch (_) { /* no storage */ }
-function setMotion(on) {
-  motion = on; invalidate();
-  const b = $("motion"); b.textContent = `Motion: ${on ? "on" : "off"}`; b.setAttribute("aria-pressed", String(on));
-  try { localStorage.setItem("cp.plant.motion", on ? "on" : "off"); } catch (_) { /* no storage */ }
+// Signal's "one highlight, grey the rest": with something selected, only its own pipes keep full colour
+function markPipes() {
+  const sel = ctx.selected, inside = new Set();
+  const add = it => { inside.add(it); it.children.forEach(add); };
+  if (sel) add(sel);
+  const on = new Set(site.pipes.map((p, i) => inside.has(p.from) || inside.has(p.to) ? i : -1).filter(i => i >= 0));
+  svg.classList.toggle("focus", on.size > 0);
+  for (const g of svg.querySelectorAll("[data-pipe]")) g.classList.toggle("on", on.has(+g.dataset.pipe));
 }
 
-let lastAnim = 0, lastRender = 0;
-const MIN_FRAME = LOW ? 1000 / 24 : 0;                // low-power: at most 24 frames/s even while dragging
-function loop(now) {
-  stepFly(now);
-  controls.update();                                  // fires "change" while the camera moves
-  if (site && motion && now - lastAnim >= 1000 / ANIM_FPS) {
-    const dt = lastAnim ? Math.min(0.5, (now - lastAnim) / 1000) : 0;
-    lastAnim = now;
-    let moving = false;
-    for (const p of site.pipes) if (p.speed) { p.tex.offset.x -= dt * p.speed; moving = true; }
-    for (const t of site.ticks) t(dt);
-    if (moving || site.ticks.length) needsRender = true;
-  }
-  if (needsRender && now - lastRender >= MIN_FRAME) {
-    needsRender = false; lastRender = now;
-    renderer.render(scene, camera);
-    if (needsLabels) { needsLabels = false; updateLabels(); labelRenderer.render(scene, camera); }   // DOM work: only when the view changed
-  }
-  requestAnimationFrame(loop);
+// top bar, second line: the AF path of the selection, or the site in one sentence
+function summary() {
+  const sum = $("summary"), crumbs = $("crumbs"), v = ctx.values;
+  crumbs.hidden = !ctx.selected; sum.hidden = !!ctx.selected;
+  if (ctx.selected) return;
+  const thru = +v[`${site.root.node.tag}.CDU100.THRU`];
+  const wells = site.items.filter(it => it.node.template.startsWith("Well - "));
+  const producing = wells.filter(it => v[`${it.node.tag}.STATUS`] === "Producing").length;
+  const problems = site.items.filter(it => {
+    const a = it.depth >= 2 && statusAttr(it), st = a && STATUS_LEVEL[v[`${it.node.tag}.${a[1]}`]];
+    return st === "warning" || st === "critical";
+  });
+  sum.replaceChildren(
+    Number.isFinite(thru) ? `${fmt(thru)} bbl/d into the crude unit · ` : "",
+    `${producing} of ${wells.length} wells producing · `,
+    problems.length ? Object.assign(document.createElement("b"), { textContent: `${problems.length} ${problems.length > 1 ? "items need" : "item needs"} attention` }) : "all equipment normal");
+}
+
+// left pane: a rail when collapsed, expanded on demand; on phones a drawer
+function setPane(open) {
+  const keep = lastScale;
+  document.body.classList.toggle("pane-open", open);
+  try { localStorage.setItem("cp.plant.pane", open ? "open" : "closed"); } catch (_) { /* no storage */ }
+  if (window.innerWidth > 700) setVB({ ...vb, w: svg.clientWidth / keep, h: svg.clientHeight / keep }, { now: true });
+  if (open) $("treeBody").querySelector(".nm.on, .nm")?.focus({ preventScroll: true });
+}
+
+// Motion: flowing dashes in the pipes (CSS animation, a few frames per second)
+let motion = false;
+try { motion = localStorage.getItem("cp.plant.motion2d") === "on"; } catch (_) { /* no storage */ }
+function setMotion(on) {
+  motion = on;
+  svg.classList.toggle("moving", on);
+  $("motion").setAttribute("aria-pressed", String(on));
+  try { localStorage.setItem("cp.plant.motion2d", on ? "on" : "off"); } catch (_) { /* no storage */ }
 }
 
 async function main() {
   try { await U.load(); } catch (e) { $("err").hidden = false; $("err").textContent = `Could not load data: ${e.message}`; return; }
-  $("site").replaceChildren(...M.sites.map(s => el("option", { value: s.code }, `${s.name}, ${s.country}`)));
-  $("site").addEventListener("change", e => openSite(e.target.value));
+  const fromHash = wirePage({ openSite, select, home: () => home(false) });
   $("motion").addEventListener("click", () => setMotion(!motion));
+  for (const b of document.querySelectorAll("[data-open]")) b.addEventListener("click", () => setPane(true));
+  $("paneClose").addEventListener("click", () => setPane(false));
+  $("paneBtn").addEventListener("click", () => setPane(!document.body.classList.contains("pane-open")));
+  // double-click on empty ground: back to the whole site
+  svg.addEventListener("dblclick", e => { if (!e.target.closest("[data-id], [data-pipe]")) { select(null, { fly: false }); home(false); } });
+  let paneOpen = null;
+  try { paneOpen = localStorage.getItem("cp.plant.pane"); } catch (_) { /* no storage */ }
+  if (window.innerWidth > 700 && paneOpen !== "closed") document.body.classList.add("pane-open");
   setMotion(motion);
-  $("lowpower").hidden = !LOW;
-  $("reset").addEventListener("click", () => { select(null, { fly: false }); homeView(false); });
-  $("infoClose").addEventListener("click", () => select(null, { fly: false }));
-  $("treeBtn").addEventListener("click", () => $("tree").classList.toggle("open"));
-  $("treeClose").addEventListener("click", () => $("tree").classList.remove("open"));
-  document.addEventListener("keydown", e => { if (e.key === "Escape") { if ($("tree").classList.contains("open")) $("tree").classList.remove("open"); else if (selected) select(selected.parent?.depth ? selected.parent : null); } });
-  window.addEventListener("resize", () => { resize(); updateLabels(true); });
-  window.addEventListener("hashchange", () => fromHash(false));
-  legend(); resize();
-  fromHash(true);
+  let t;
+  window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => setVB({ ...vb, w: svg.clientWidth / lastScale, h: svg.clientHeight / lastScale }, { now: true }), 100); });
+  fromHash();
   setInterval(refresh, (CFG.refreshSeconds || 60) * 1000);
-  requestAnimationFrame(loop);
-}
-function fromHash(first) {
-  const [code, id] = decodeURIComponent(location.hash.slice(1)).split("/");
-  const c = SITES[code] ? code : (site ? site.code : M.sites[0].code);
-  if (!site || c !== site.code) openSite(c, id);
-  else if (!first) { const it = id && site.byId[id]; if (it !== selected) select(it || null); }
 }
 main();

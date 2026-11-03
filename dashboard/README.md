@@ -47,38 +47,41 @@ the map itself; only the IBM Plex fonts come from Google Fonts, with a system-fo
 
 All designs share `common.js` (data loading, status rules, tooltip content), so the numbers are the same everywhere.
 
-## 3D plant (`plant.html`)
+## Plant view (`plant.html`)
 
-An isometric 3D model of one site, generated from the AF hierarchy: every **Area** is a slab, every
-**unit / work center** a pad on it, and every **equipment element** a model chosen by its AF template
-(tank, column, fired heater, pump, separator, desalter, reactor, compressor, ejector, boiler, cooling
-tower, pipeline, and one model per well lift type). Process areas sit in AF order, which is the flow
-order, with a pipe rack behind them and the utilities behind the rack.
+A flat isometric drawing of one site (SVG, industrial style), generated from the AF hierarchy: every
+**Area** is a concrete slab, every **unit / work center** a pad on it, and every **equipment element**
+a drawing chosen by its AF template (tank, column, fired heater, pump, separator, desalter, reactor,
+compressor, ejector, boiler, cooling tower, pipeline, and one per well lift type). Areas sit in two
+rows like a conveyor: the first row runs in AF order (the flow order), the second runs back, each row
+with its pipe rack behind it and a cross rack joining them.
 
+- **Top bar:** the site title with one line saying how it is doing (crude unit throughput, wells
+  producing, how many items need attention), or the AF path of the selected element; **Animate
+  flows**, **Open in PI Vision** and the site selector.
+- **Left pane:** the **AF hierarchy** and the legend. It collapses to a thin rail; on phones it is a
+  drawer behind ☰. Items that need attention show their status in words.
 - **Product flow:** pipes run from each well through the separator, pipeline, crude tanks, CDU/VDU and
-  hydrotreater to the product tanks, plus steam, cooling water and recycle gas. Each pipe is colored
-  by product and moves at a speed set by the PI flow attribute that measures it; a grey, still pipe
-  has no flow. Hover a pipe for its product and current flow.
-- **Live state:** the colored bands show status (well status, unit status or equipment run status),
-  tank fills follow *Level*, rod pumps stroke at their *Strokes Per Minute*, cooling tower fans turn
-  when running, heater fireboxes glow when fuel gas is flowing.
-- **Navigation:** drag to rotate, right-drag (two fingers on touch) to pan, scroll or pinch to zoom.
-  Click any element in the model or in the **AF hierarchy** tree to fly to it and see all its PI
-  attributes, configuration and AF path. `Esc` goes up one level, **Reset view** goes back to the
-  standard angle. Links like `plant.html#BAR/BAR-C-101` open a site with an element selected.
+  hydrotreater to the product tanks, plus the utilities (steam, cooling water, recycle gas). Select an
+  element and only its own pipes keep full colour. Hover a pipe for its product and current flow;
+  **Animate flows** shows the flow direction (off by default, it costs about half a CPU core on a
+  machine without a GPU). A grey pipe has no flow.
+- **Live state:** equipment status (well status, unit status or run status) colours a band on each
+  model: grey when normal, light orange when reduced or starting, orange when tripped or upset, pale
+  grey when stopped. Tank fills follow *Level*, heater fireboxes glow when fuel gas is flowing.
+- **Navigation:** drag to pan, scroll or pinch to zoom, arrow keys and `+`/`-`. Click any element in the
+  drawing or the tree to zoom to it and see its PI values, configuration and AF path. `Esc` goes up one
+  level (and back to the whole site at the top); double-click empty ground for the whole site. Links
+  like `plant.html#BAR/BAR-C-101` open a site with an element selected.
+- **Look:** colours, type and spacing follow the **Signal** design system: one highlight colour (blue)
+  for the selection, problems in orange with a word (never green vs red), a categorical palette of at
+  most six groups for the pipes, IBM Plex Sans with tabular figures, and a source line under the data.
 - **Data:** the element tree and PI attributes come from `data/plant.js` (generated from the AF model),
   values from PI Web API (all PI Point attributes of the site, refreshed every 60 s) or the demo snapshot.
-- Open it from the Topo site view (**View the plant in 3D**). It uses three.js 0.170 (bundled in
-  `vendor/three`, MIT license) as ES modules, so serve the folder over HTTP (IIS or
-  `python -m http.server`); opening the file directly from disk won't work.
-
-**CPU use.** The view only redraws when something changes (camera, data, hover) and each piece of
-equipment is merged into a few draw calls. On a machine without a graphics card, e.g. when it's
-opened on a server VM, the browser renders WebGL on the CPU; the page detects that and switches to
-**low-power mode**: no antialiasing, motion off by default, 4 frames/s when motion is turned on
-(about half a CPU core), capped frame rate while dragging. Use the **Motion** button to toggle the
-flowing pipes and moving equipment; `plant.quality`, `maxFps` and `lowPowerFps` in `config.js` tune it.
-For the smoothest result open the page on a PC with a GPU: the server only serves static files.
+- **CPU:** no WebGL, so it runs fine on a server VM without a graphics card: it only repaints when you
+  pan, zoom, hover or new values arrive, and while you drag it moves the drawing already on screen.
+- Open it from the Topo site view (**View the plant**). It uses ES modules, so serve the folder over
+  HTTP (IIS or `python -m http.server`); opening the file directly from disk won't work.
 
 Set `piVision.elementDisplay` in `config.js` to an asset-relative PI Vision display to make
 **Open in PI Vision** open the selected element; otherwise it uses `siteDisplay` or the home page.
@@ -105,7 +108,8 @@ but some uses need an ArcGIS account.
 topo.html, topo.js     Topo design (landing page)
 build_relief.py        renders img/topo/*.jpg and data/relief.js (terrain base maps)
 map3d.html, map3d.js   3D design
-plant.html, plant.js   3D plant of one site, built from the AF hierarchy (three.js in vendor/three)
+plant.html, plant.js   plant view of one site, built from the AF hierarchy (SVG)
+plant-core.js          plant view: layout from AF, process flows, PI values, side panels
 index.html, app.js     Satellite design (Leaflet 1.9.4 bundled in vendor/leaflet, BSD-2 license)
 holo.html, holo.js     Holo 3D design
 hex.html, hex.js       Hex grid design
@@ -117,7 +121,7 @@ data/model.js          sites, wells, AF element paths (generated)
 data/map.js            offline country outlines (generated)
 data/demo.js           simulator snapshot for demos without PI (generated)
 data/relief.js         where each terrain image sits on the map (generated)
-data/plant.js          each site's AF element tree and PI attributes, for the 3D plant (generated)
+data/plant.js          each site's AF element tree and PI attributes, for the plant view (generated)
 build_data.py          regenerates data/*.js after changing model/spec.py
 ```
 

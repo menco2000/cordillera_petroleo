@@ -7,7 +7,7 @@
 Writes
   dashboard/data/model.js  sites, wells and AF element paths from model/model.json
   dashboard/data/map.js    country outlines, offline fallback for the satellite map (Natural Earth 1:50m)
-  dashboard/data/plant.js  each site's AF element tree with its PI attributes, for the 3D plant view
+  dashboard/data/plant.js  each site's AF element tree with its PI attributes, for the plant view
   dashboard/data/demo.js   ~90 days of simulator output, used when PI Web API is not reachable
 """
 import argparse
@@ -85,7 +85,7 @@ def build_model(model):
 
 
 # ---------------------------------------------------------------- plant.js
-# static attributes the 3D view uses for sizing and labels
+# static attributes the plant view uses for sizing and labels
 PLANT_PROPS = ("Product", "Nominal Capacity", "Max Fill Height", "Diameter", "Design Capacity", "Lift Method",
                "Number of Trays", "Length", "Location|Latitude", "Location|Longitude", "Service")
 
