@@ -187,7 +187,7 @@ export function layoutSite(code, makePart) {
 
 // ------------------------------------------------------------------ live values
 // ctx is the state both views share: the site on screen, the selection and the latest PI values
-export const ctx = { site: null, selected: null, values: {}, asOf: null, live: false };
+export const ctx = { site: null, selected: null, values: {}, times: {}, asOf: null, live: false };
 
 export const statusAttr = it => (P.templates[it.node.template] || []).find(a => /Status$/.test(a[0]));
 export function statusOf(it) {
@@ -216,7 +216,7 @@ export const tankFraction = (node) => {
 
 export async function fetchValues() {
   const r = await state.source.tagValues(ctx.site.code);
-  ctx.values = r.values; ctx.asOf = r.asOf; ctx.live = r.live;
+  ctx.values = r.values; ctx.times = r.times || {}; ctx.asOf = r.asOf; ctx.live = r.live;
 }
 export function initialValues(code) {
   ctx.values = state.source.name === "demo" ? { ...(state.data.sites[code].tags || {}) } : {};
@@ -226,10 +226,15 @@ export function initialValues(code) {
 const fmtV = v => typeof v === "number" ? fmt(v, Math.abs(v) < 10 && v !== 0 ? 1 : 0) : v ?? "—";
 
 export function asOfText() {
-  // Signal: always say where the numbers come from
-  if (!ctx.asOf) return "";
-  const when = new Date(ctx.asOf).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-  return `${ctx.live ? `PI Web API, ${CFG.piwebapi?.afServer}` : "Demo data (simulator)"} · current values, ${when} · refreshed every ${CFG.refreshSeconds || 60} s`;
+  return ctx.asOf || ctx.live ? U.freshness(ctx.asOf, ctx.live).source : "";
+}
+
+// newest PI timestamp among one element's values
+function newestOf(n, attrs) {
+  const ts = attrs.map(a => ctx.times[`${n.tag}.${a[1]}`]).filter(Boolean).sort();
+  if (!ts.length) return ctx.live ? "no timestamps" : "demo snapshot";
+  const t = ts.at(-1);
+  return `newest value ${U.when(t)} (${U.ago(Date.now() - new Date(t).getTime())})`;
 }
 
 export function renderInfo(it, select) {
@@ -237,8 +242,9 @@ export function renderInfo(it, select) {
   const kind = ["Site", "Area", "Unit", "Equipment"][Math.min(3, it.depth)];
   $("infoKind").textContent = kind === n.template ? kind : `${kind} · ${n.template}`;
   const rows = attrs.filter(a => !/Status$|Scenario$/.test(a[0])).map(([name, suffix, uom]) => {
-    const v = values[`${n.tag}.${suffix}`];
-    return el("tr", {}, el("td", {}, name), el("td", {}, fmtV(typeof v === "number" ? v : v ?? null), uom ? el("small", {}, ` ${uom}`) : null));
+    const v = values[`${n.tag}.${suffix}`], t = ctx.times[`${n.tag}.${suffix}`];
+    return el("tr", { title: t ? `PI timestamp ${U.when(t)} (${U.ago(Date.now() - new Date(t).getTime())})` : null },
+      el("td", {}, name), el("td", {}, fmtV(typeof v === "number" ? v : v ?? null), uom ? el("small", {}, ` ${uom}`) : null));
   });
   const scen = values[`${n.tag}.SCEN`];
   const props = Object.entries(n.props).filter(([k]) => !k.startsWith("Location"));
@@ -252,7 +258,7 @@ export function renderInfo(it, select) {
     kids.length ? el("div", { class: "sec" }, el("h3", {}, it.depth === 2 && n.template === "Wellfield" ? "Wells" : "Contains"),
       el("div", { class: "kids" }, kids.map(k => el("button", { type: "button", onclick: () => select(k) }, k.node.name)))) : null,
     el("div", { class: "sec" }, el("h3", {}, "AF path"), el("div", { class: "meta" }, `\\\\${CFG.piwebapi?.afServer}\\${M.database}\\${n.path}`),
-      rows.length ? el("p", { class: "source" }, `${ctx.live ? "PI Web API" : "Demo data"} · PI tags ${n.tag}.* · current values`) : null),
+      rows.length ? el("p", { class: "source" }, `${ctx.live ? "PI Web API" : "Demo data"} · PI tags ${n.tag}.* · ${newestOf(n, attrs)}`) : null),
   ].filter(Boolean));
 }
 

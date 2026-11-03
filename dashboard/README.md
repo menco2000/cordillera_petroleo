@@ -132,12 +132,14 @@ In PI System Explorer, open the configuration database
 
 | Attribute | Value |
 |---|---|
-| CorsOrigins | `http://PISERVER, http://localhost:8080` (the address the map is opened from) |
+| CorsOrigins | `http://PISERVER,http://localhost:8080`: the exact address the map is opened from, scheme + host + port, **no trailing slash** (`http://host:8080/` never matches) |
 | CorsSupportsCredentials | `True` |
 | CorsMethods | `GET` |
 | AuthenticationMethods | `Kerberos` (Windows login, no prompt) and/or `Basic` (browser asks for a user) |
 
-Restart the PI Web API service afterwards. A read-only account is enough. If the browser shows the
+Restart the PI Web API service afterwards (it reads these settings at start-up). If the browser
+console says *"blocked by CORS policy: No 'Access-Control-Allow-Origin' header"*, compare `CorsOrigins`
+character by character with the page's address bar. A read-only account is enough. If the browser shows the
 PI Web API certificate as untrusted, open the PI Web API URL once and accept it, or install the
 certificate. Otherwise the map can't connect.
 

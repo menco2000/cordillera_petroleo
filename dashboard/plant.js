@@ -469,7 +469,9 @@ function applyValues() {
   updatePipes();
   draw();
   $("asof").textContent = asOfText();
-  const pe = $("pierr"); pe.hidden = !U.state.piError || ctx.live; pe.textContent = U.state.piError ? `Why not live: ${U.state.piError}` : "";
+  const fr = U.freshness(ctx.asOf, ctx.live), pe = $("pierr");
+  const why = !ctx.live && U.state.piError ? `Why not live: ${U.state.piError}` : (ctx.asOf || ctx.live ? fr.stale : null);
+  pe.hidden = !why; pe.textContent = why || "";
   renderTreeDots(); summary();
   if (ctx.selected) renderInfo(ctx.selected, select);
 }
@@ -517,6 +519,8 @@ function summary() {
     Number.isFinite(thru) ? `${fmt(thru)} bbl/d into the crude unit · ` : "",
     `${producing} of ${wells.length} wells producing · `,
     problems.length ? Object.assign(document.createElement("b"), { textContent: `${problems.length} ${problems.length > 1 ? "items need" : "item needs"} attention` }) : "all equipment normal");
+  const fr = U.freshness(ctx.asOf, ctx.live);
+  if (fr.short) sum.append(" · ", Object.assign(document.createElement("b"), { textContent: fr.short, title: fr.stale }));
 }
 
 // left pane: a rail when collapsed, expanded on demand; on phones a drawer

@@ -290,10 +290,12 @@
     const pv = $("pv"), url = U.piVisionUrl(state.view);
     pv.hidden = !url; if (url) pv.href = url;
     $("site").value = state.view || "";
-    // Signal: always say where the numbers come from
-    const when = new Date(state.data.asOf).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-    $("asof").textContent = `${state.data.live ? `PI Web API, ${(CFG.piwebapi || {}).afServer}` : "Demo data (simulator)"} · current values, ${when} · refreshed every ${CFG.refreshSeconds || 60} s`;
-    const pe = $("pierr"); pe.hidden = !state.piError || state.data.live; pe.textContent = state.piError ? `Why not live: ${state.piError}` : "";
+    // Signal: always say where the numbers come from, and how old they are
+    const fr = U.freshness(state.data.asOf, state.data.live);
+    $("asof").textContent = fr.source;
+    const pe = $("pierr"), why = !state.data.live && state.piError ? `Why not live: ${state.piError}` : fr.stale;
+    pe.hidden = !why; pe.textContent = why || "";
+    if (fr.short) sum.append(" · ", el("b", { title: fr.stale }, fr.short));
     renderList(); renderLegend();
   }
 

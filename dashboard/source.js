@@ -11,9 +11,9 @@
     const D = window.CP_DEMO;
     return {
       name: "demo",
-      async snapshot() { return { asOf: D.asOf, live: false, sites: structuredClone(D.sites) }; },
+      async snapshot() { return { asOf: D.asOf, readAt: new Date().toISOString(), live: false, sites: structuredClone(D.sites) }; },
       // every PI attribute of one site, keyed by PI tag (used by the plant view)
-      async tagValues(code) { return { asOf: D.asOf, live: false, values: { ...D.sites[code].tags } }; },
+      async tagValues(code) { return { asOf: D.asOf, readAt: new Date().toISOString(), live: false, values: { ...D.sites[code].tags }, times: {} }; },
     };
   }
 
@@ -65,18 +65,21 @@
       return v;
     }
 
+    // current value and its PI timestamp for each AF attribute path
     async function currentValues(paths) {
       const webIds = await resolve(paths);
-      const byId = new Map();
+      const byId = new Map(), tsById = new Map();
       const valid = webIds.filter(Boolean);
       await Promise.all(chunks(valid, 40).map(async part => {
-        const res = await get("streamsets/value", { webId: part, selectedFields: "Items.WebId;Items.Value.Value" });
-        (res.Items || []).forEach(it => byId.set(it.WebId, val(it.Value && it.Value.Value)));
+        const res = await get("streamsets/value", { webId: part, selectedFields: "Items.WebId;Items.Value.Value;Items.Value.Timestamp" });
+        (res.Items || []).forEach(it => { byId.set(it.WebId, val(it.Value && it.Value.Value)); if (it.Value && it.Value.Timestamp) tsById.set(it.WebId, it.Value.Timestamp); });
       }));
-      const out = {};
-      paths.forEach((p, i) => { out[p] = webIds[i] ? byId.get(webIds[i]) ?? null : null; });
-      return out;
+      const out = {}, times = {};
+      paths.forEach((p, i) => { out[p] = webIds[i] ? byId.get(webIds[i]) ?? null : null; times[p] = webIds[i] ? tsById.get(webIds[i]) ?? null : null; });
+      return { values: out, times };
     }
+    // the newest timestamp among the values: how current the picture on screen is
+    const newest = times => Object.values(times).filter(Boolean).reduce((m, t) => (t > m ? t : m), "") || null;
 
     // ---- layout of the AF paths this dashboard reads -----------------------
     const WELL_ATTRS = { status: "Well Status", scenario: "Sim Scenario", oil: "Oil Rate", water: "Water Rate",
@@ -110,14 +113,16 @@
     return {
       name: "piwebapi",
       async tagValues(code) {
-        const plan = sitePlan(code), vals = await currentValues(plan.map(p => p[1]));
-        return { asOf: new Date().toISOString(), live: true, values: Object.fromEntries(plan.map(([tag, path]) => [tag, vals[path]])) };
+        const plan = sitePlan(code), { values, times } = await currentValues(plan.map(p => p[1]));
+        return { asOf: newest(times), readAt: new Date().toISOString(), live: true,
+          values: Object.fromEntries(plan.map(([tag, path]) => [tag, values[path]])),
+          times: Object.fromEntries(plan.map(([tag, path]) => [tag, times[path]])) };
       },
       async snapshot() {
         if (!dbWebId) {   // one cheap request first, so an unreachable server fails fast
           dbWebId = (await get("assetdatabases", { path: `\\\\${cfg.afServer}\\${M.database}`, selectedFields: "WebId" })).WebId;
         }
-        const vals = await currentValues(plan.map(p => p[2]));
+        const { values: vals, times } = await currentValues(plan.map(p => p[2]));
         const sites = {};
         for (const s of M.sites) {
           sites[s.code] = { wells: {}, units: {} };
@@ -141,7 +146,7 @@
           Object.assign(site, { oil, water, gas });
           if (site.producing == null) site.producing = producing;
         }
-        return { asOf: new Date().toISOString(), live: true, sites };
+        return { asOf: newest(times), readAt: new Date().toISOString(), live: true, sites };
       },
     };
   }
