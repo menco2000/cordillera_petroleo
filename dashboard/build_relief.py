@@ -22,8 +22,10 @@ TILE_URL = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.
 CONTINENT = dict(z=5, box=(-82.5, 13.5, -33.5, -56.5), exag=10, step=500, smooth=1.5)
 SITE = dict(z=11, side=1800, exag=3.0, step=60, smooth=2.5)
 
-PAPER_DARK, PAPER_LIGHT, SEA = (214, 221, 228), (246, 248, 250), (226, 234, 241)
-INK, COAST = (88, 104, 120), (60, 74, 88)
+# Signal design system: land is surface-muted (shaded by the hillshade), water is the surface,
+# contours in ink-subtle, the coast in the axis grey
+PAPER_DARK, PAPER_LIGHT, SEA = (222, 225, 230), (246, 247, 249), (255, 255, 255)
+INK, COAST = (99, 107, 120), (137, 146, 158)
 
 
 def load_js(path):
@@ -95,8 +97,8 @@ def topo(e, hs, step, smooth):
     # levels get closer together low down, so plains and foothills show structure too
     minor, major = edges(np.floor(es * 6)) & land, edges(np.floor(es * 1.5)) & land
     ink = np.array(INK, float)
-    paper[minor] = paper[minor] * 0.55 + ink * 0.45
-    paper[major] = paper[major] * 0.15 + ink * 0.85
+    paper[minor] = paper[minor] * 0.72 + ink * 0.28
+    paper[major] = paper[major] * 0.4 + ink * 0.6
     paper[edges(land)] = COAST
     return paper
 

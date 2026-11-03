@@ -47,9 +47,12 @@ def sim_settings(cfg):
 
 
 def connect(cfg, model):
-    from .piwebapi import PIWebAPI
+    from .piwebapi import PIWebAPI, explain
     api = PIWebAPI(cfg["piwebapi"])
-    found = api.find_points("CP.*")
+    try:
+        found = api.find_points("CP.*")
+    except Exception as e:  # turn the usual setup problems into a readable message
+        sys.exit(explain(e, api))
     expected = expected_points(model)
     missing = sorted(set(expected) - set(found))
     return api, found, expected, missing

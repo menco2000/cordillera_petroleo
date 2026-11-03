@@ -1,18 +1,20 @@
-// Design: Topo. Paper contour map with oil production drawn live as colored contour bands.
+// Design: Topo. Contour map with oil production drawn live as contour bands, in the Signal design
+// system: production on the blue sequential scale, problems in orange with a word, the site or well
+// you point at in the highlight blue (on the map and in the ranked list at once).
 (function () {
   "use strict";
-  const U = window.CP_UI, { M, SITES, state, el, sv, fmt, LEVEL, WELL_LEVEL } = U;
+  const U = window.CP_UI, { M, SITES, CFG, state, el, sv, fmt, LEVEL, WELL_LEVEL } = U;
   const R = window.CP_RELIEF;
   const $ = id => document.getElementById(id);
-  const canvas = $("base"), over = $("over"), labels = $("labels");
+  const stage = $("stage"), canvas = $("base"), over = $("over"), labels = $("labels");
 
-  // heat bands, low to high; each band is laid over the one below it like stacked tracing paper
-  const BANDS = ["#5ac8dc", "#5ad2aa", "#bedc5a", "#fac83c", "#f58c32", "#dc3c32"];
-  const OUTLINE = [40, 40, 60];
+  // Signal sequential scale seq-1 … seq-5, low to high
+  const BANDS = ["#e8effd", "#b7cbf7", "#7a9ff0", "#3a6fe3", "#0a2f8a"];
+  const MARK = { good: "#0f1b2d", warning: "#eaa56a", critical: "#c2410c" };
   const STOPPED = new Set(["Shut-In", "Workover"]);
 
-  const W = () => window.innerWidth, H = () => window.innerHeight;
-  const small = () => W() <= 640;
+  const W = () => stage.clientWidth, H = () => stage.clientHeight;
+  const small = () => window.innerWidth <= 700;
 
   // ---------------------------------------------------------------- projection
   const gx = (lon, z) => (lon + 180) / 360 * 2 ** z * 256;
@@ -20,32 +22,22 @@
   let rel = null, frame = { s: 1, ox: 0, oy: 0 };
   const project = (lat, lon) => [frame.ox + (gx(lon, rel.z) - rel.x0) * frame.s, frame.oy + (gy(lat, rel.z) - rel.y0) * frame.s];
 
-  const rectOf = n => { const r = n.getBoundingClientRect(); return r.width ? [r.left - 6, r.top - 6, r.width + 12, r.height + 12] : null; };
-  const chromeTop = () => Math.ceil(document.querySelector("header.top").getBoundingClientRect().bottom) + 10;
-  const chromeBottom = () => Math.floor(document.querySelector("footer.bottom").getBoundingClientRect().top) - 10;
-
+  // the whole continent inside the map area
   function fitContinent() {
-    const aspect = rel.w / rel.h;
-    // wide screens: full height, the header sits beside the map; otherwise between header and footer
-    const fullH = H() - 48, fullW = fullH * aspect;
-    const side = Math.max(document.querySelector(".title").offsetWidth, $("legend").offsetWidth) + 64;
-    let box;
-    if ((W() - fullW) / 2 >= side) box = [(W() - fullW) / 2, 24, fullW, fullH];
-    else {
-      const top = chromeTop(), h = Math.max(200, chromeBottom() - top), w = Math.min(W() - 16, h * aspect);
-      box = [(W() - w) / 2, top + (h - w / aspect) / 2, w, w / aspect];
-    }
-    frame = { s: box[2] / rel.w, ox: box[0], oy: box[1] };
+    const pad = small() ? 12 : 28, aspect = rel.w / rel.h;
+    let h = H() - 2 * pad, w = h * aspect;
+    if (w > W() - 2 * pad) { w = W() - 2 * pad; h = w / aspect; }
+    frame = { s: w / rel.w, ox: (W() - w) / 2, oy: (H() - h) / 2 };
   }
 
+  // the site's wells fill most of the map area; the terrain always covers it
   function fitSite(code) {
     const m = SITES[code], pts = [m, ...m.wells];
     const xs = pts.map(p => gx(p.lon, rel.z) - rel.x0), ys = pts.map(p => gy(p.lat, rel.z) - rel.y0);
     const bx0 = Math.min(...xs), bx1 = Math.max(...xs), by0 = Math.min(...ys), by1 = Math.max(...ys);
-    const top = chromeTop() + 20, bottom = chromeBottom() - 30, fw = W() - (small() ? 80 : 360), fh = bottom - top;
-    // fit the wells into the free area, but never so small that the map stops covering the screen
-    const s = Math.max(Math.min(fw / (bx1 - bx0 || 1), fh / (by1 - by0 || 1)) * 0.78, W() / rel.w, H() / rel.h);
-    let ox = W() / 2 - (bx0 + bx1) / 2 * s, oy = (top + bottom) / 2 - (by0 + by1) / 2 * s;
+    const fw = W() - (small() ? 90 : 260), fh = H() - (small() ? 90 : 140);
+    const s = Math.max(Math.min(fw / (bx1 - bx0 || 1), fh / (by1 - by0 || 1)) * 0.8, W() / rel.w, H() / rel.h);
+    let ox = W() / 2 - (bx0 + bx1) / 2 * s, oy = H() / 2 - (by0 + by1) / 2 * s;
     ox = Math.min(0, Math.max(W() - rel.w * s, ox)); oy = Math.min(0, Math.max(H() - rel.h * s, oy));
     frame = { s, ox, oy };
   }
@@ -58,16 +50,11 @@
   }
 
   const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-  // band L over the paper = paper * 0.45^L + colour stack; as one RGBA per band
-  const BAND_RGBA = (() => {
-    let k = 1, q = [0, 0, 0];
-    return BANDS.map(h => {
-      const c = rgb(h); k *= 0.45; q = q.map((v, i) => v * 0.45 + c[i] * 0.55);
-      const a = 1 - k, col = q.map(v => v / a);
-      const oa = 0.7 + a * 0.3, oc = col.map((v, i) => (OUTLINE[i] * 0.7 + v * a * 0.3) / oa);
-      return { fill: [...col, a * 255], line: [...oc, oa * 255] };
-    });
-  })();
+  // flat bands (no gradients); each band outlined in a darker step of its own colour
+  const BAND_RGBA = BANDS.map(h => {
+    const c = rgb(h), line = c.map(v => Math.round(v * 0.72 + 15 * 0.28));
+    return { fill: [...c, 0.82 * 255], line: [...line, 0.9 * 255] };
+  });
 
   // sum of gaussians (each pt: [x, y, weight]) on a grid with `g` screen px per cell, normalized to 0..1
   function field(cw, ch, g, pts, sigma) {
@@ -101,15 +88,15 @@
       pts.push([...project(m.lat, m.lon), 1.2]);
       f = field(cw, ch, g, pts, 55 * frame.s);
     }
-    const lv = new Uint8Array(f.length);
-    for (let i = 0; i < f.length; i++) lv[i] = Math.floor(Math.min(f[i], 0.999) * 7);
+    const n = BANDS.length, lv = new Uint8Array(f.length);
+    for (let i = 0; i < f.length; i++) lv[i] = Math.floor(Math.min(f[i], 0.999) * (n + 1));
     const img = new ImageData(cw, ch), d = img.data;
     for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) {
-      const n = j * cw + i, l = lv[n];
+      const k = j * cw + i, l = lv[k];
       if (!l) continue;
-      const edge = (i > 0 && lv[n - 1] !== l) || (j > 0 && lv[n - cw] !== l) || (i < cw - 1 && lv[n + 1] < l) || (j < ch - 1 && lv[n + cw] < l);
+      const edge = (i > 0 && lv[k - 1] < l) || (j > 0 && lv[k - cw] < l) || (i < cw - 1 && lv[k + 1] < l) || (j < ch - 1 && lv[k + cw] < l);
       const c = edge ? BAND_RGBA[l - 1].line : BAND_RGBA[l - 1].fill;
-      d[n * 4] = c[0]; d[n * 4 + 1] = c[1]; d[n * 4 + 2] = c[2]; d[n * 4 + 3] = c[3];
+      d[k * 4] = c[0]; d[k * 4 + 1] = c[1]; d[k * 4 + 2] = c[2]; d[k * 4 + 3] = c[3];
     }
     return img;
   }
@@ -120,7 +107,7 @@
     canvas.width = Math.round(W() * dpr); canvas.height = Math.round(H() * dpr);
     const ctx = canvas.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = getComputedStyle(document.body).backgroundColor;
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, W(), H());
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(base, frame.ox, frame.oy, rel.w * frame.s, rel.h * frame.s);
@@ -133,15 +120,14 @@
 
   // ---------------------------------------------------------------- labels
   // Each label tries the spot right of its point, then left, then rows above and below, then
-  // further out. It avoids other labels, every point, the header and the footer; a thin
-  // leader line connects it to its point.
+  // further out. It avoids other labels and every point, and stays inside the map; a thin leader
+  // line connects it to its point.
   const overlaps = (a, b) => a[0] < b[0] + b[2] && a[0] + a[2] > b[0] && a[1] < b[1] + b[3] && a[1] + a[3] > b[1];
   function placeAll(items, gap) {
-    const chrome = [...document.querySelectorAll(".title > *, #pv, #legend, #designs, #asof")].map(rectOf).filter(Boolean);
     const dots = items.map(it => [it.x - 7, it.y - 7, 14, 14]);
     const placed = [];
     const fits = r => r[0] >= 6 && r[0] + r[2] <= W() - 6 && r[1] >= 6 && r[1] + r[3] <= H() - 6;
-    const cost = r => placed.filter(p => overlaps(r, p)).length * 4 + chrome.filter(c => overlaps(r, c)).length * 3 + dots.filter(d => overlaps(r, d)).length;
+    const cost = r => placed.filter(p => overlaps(r, p)).length * 4 + dots.filter(d => overlaps(r, d)).length;
     // the most crowded points first: they have the fewest good spots
     const crowd = it => items.filter(o => Math.hypot(o.x - it.x, o.y - it.y) < 120).length;
     for (const it of [...items].sort((a, b) => crowd(b) - crowd(a) || a.y - b.y)) {
@@ -165,18 +151,23 @@
     }
   }
 
-  function flag(level) {
-    if (level === "warning") return sv("svg", { viewBox: "0 0 12 11", class: "flag", role: "img", "aria-label": "Watch" }, sv("path", { d: "M6 .5 11.5 10.5H.5Z", fill: "var(--watch)" }));
-    if (level === "critical") return sv("svg", { viewBox: "0 0 11 11", class: "flag", role: "img", "aria-label": "Alert" }, sv("rect", { x: .5, y: .5, width: 10, height: 10, rx: 1.5, fill: "var(--alert)" }));
-    return null;
-  }
+  // status in words (Signal: never colour alone)
+  const siteWord = code => { const st = U.siteStatus(code); return st.level === "good" ? null : { cls: st.level === "critical" ? "" : "watch", text: LEVEL[st.level].label, reason: st.reasons[0] }; };
+  const wellWord = v => v.status === "Tripped" ? { cls: "bad", text: "Tripped" } : v.status === "Starting Up" ? { cls: "watch", text: "Starting up" }
+    : STOPPED.has(v.status) ? { cls: "off", text: v.status === "Shut-In" ? "Shut in" : "Workover" } : null;
 
   const tip = $("tip");
-  function hover(node, content) {
+  function hover(node, key, content) {
+    node.addEventListener("pointerenter", () => hl(key));
     node.addEventListener("pointermove", e => { if (e.pointerType === "mouse") U.showTip(tip, e, content()); });
-    node.addEventListener("pointerleave", () => { tip.hidden = true; });
-    node.addEventListener("focus", () => { const r = node.getBoundingClientRect(); U.showTip(tip, { clientX: r.right, clientY: r.top }, content()); });
-    node.addEventListener("blur", () => { tip.hidden = true; });
+    node.addEventListener("pointerleave", () => { tip.hidden = true; hl(null); });
+    node.addEventListener("focus", () => { hl(key); const r = node.getBoundingClientRect(); U.showTip(tip, { clientX: r.right, clientY: r.top }, content()); });
+    node.addEventListener("blur", () => { tip.hidden = true; hl(null); });
+  }
+  // one highlight at a time: the same site / well on the map and in the list
+  function hl(key) {
+    for (const n of document.querySelectorAll(".hl")) n.classList.remove("hl");
+    if (key) for (const n of document.querySelectorAll(`[data-k="${CSS.escape(key)}"]`)) n.classList.add("hl");
   }
 
   function drawMarks() {
@@ -185,89 +176,124 @@
     const r = small() ? 4 : 5;
     if (!state.view) {
       for (const m of M.sites) {
-        const [x, y] = project(m.lat, m.lon), oil = U.siteFigures(m.code).oil, st = U.siteStatus(m.code).level;
-        const node = el("button", { type: "button", class: "chip", onclick: () => openSite(m.code),
+        const [x, y] = project(m.lat, m.lon), oil = U.siteFigures(m.code).oil, st = U.siteStatus(m.code).level, word = siteWord(m.code);
+        const node = el("button", { type: "button", class: "chip", "data-k": m.code, onclick: () => openSite(m.code),
           "aria-label": `${m.name}, ${LEVEL[st].label}, ${fmt(oil)} barrels of oil per day. Open site.` },
-          el("span", { class: "n" }, flag(st), m.name), el("span", { class: "v" }, fmt(oil), el("small", {}, " bbl/d")));
-        hover(node, () => U.briefSite(m.code, "Click to see the wells"));
+          el("span", { class: "n" }, m.name), el("span", { class: "v" }, fmt(oil), el("small", {}, " bbl/d")),
+          word ? el("span", { class: `why ${word.cls}` }, word.text) : null);
+        hover(node, m.code, () => U.briefSite(m.code, "Click to see the wells"));
         labels.append(node);
-        dots.append(sv("circle", { cx: x, cy: y, r: r - 1, fill: "var(--ink)", stroke: "#fff", "stroke-width": 1.5 }));
-        items.push({ x, y, node });
+        dots.append(sv("circle", { cx: x, cy: y, r: word ? r : r - 1, fill: MARK[st] || MARK.good, stroke: "#fff", "stroke-width": 1.5, "data-k": m.code, class: "dot" }));
+        items.push({ x, y, node, key: m.code });
       }
     } else {
       const m = SITES[state.view], s = state.data.sites[state.view];
       for (const w of m.wells) {
-        const [x, y] = project(w.lat, w.lon), v = s.wells[w.id];
-        const stopped = STOPPED.has(v.status), lv = WELL_LEVEL[v.status] || "planned";
-        const fill = stopped ? "#fff" : lv === "critical" ? "var(--alert)" : lv === "warning" ? "var(--watch)" : "var(--ink)";
-        const dot = sv("circle", { cx: x, cy: y, r, fill, stroke: stopped ? "var(--ink)" : "#fff", "stroke-width": stopped ? 1.5 : 2, class: "dot",
-          tabindex: 0, role: "img", "aria-label": `${w.name}, ${v.status}, ${fmt(v.oil)} barrels of oil per day` });
-        hover(dot, () => U.briefWell(state.view, w.id));
+        const [x, y] = project(w.lat, w.lon), v = s.wells[w.id], word = wellWord(v), lv = WELL_LEVEL[v.status] || "planned";
+        const stopped = STOPPED.has(v.status);
+        const dot = sv("circle", { cx: x, cy: y, r, fill: stopped ? "#fff" : MARK[lv] || MARK.good, stroke: stopped ? "#89929e" : "#fff", "stroke-width": stopped ? 1.5 : 2, class: "dot",
+          "data-k": w.id, tabindex: 0, role: "img", "aria-label": `${w.name}, ${v.status}, ${fmt(v.oil)} barrels of oil per day` });
+        hover(dot, w.id, () => U.briefWell(state.view, w.id));
         dot.addEventListener("click", e => U.showTip(tip, e, U.briefWell(state.view, w.id)));
         dots.append(dot);
-        const value = stopped ? "stopped" : lv === "critical" ? "tripped" : `${fmt(v.oil)} bbl/d`;
-        const node = el("div", { class: "tag" }, el("div", { class: "n" }, w.name), el("div", { class: `v${lv === "critical" ? " bad" : ""}` }, value));
-        hover(node, () => U.briefWell(state.view, w.id));
+        const node = el("div", { class: "tag", "data-k": w.id }, el("div", { class: "n" }, w.name),
+          el("div", { class: `v ${word && word.cls !== "off" ? word.cls : ""}` }, word ? word.text : [fmt(v.oil), el("small", {}, " bbl/d")]));
+        hover(node, w.id, () => U.briefWell(state.view, w.id));
         node.addEventListener("click", e => U.showTip(tip, e, U.briefWell(state.view, w.id)));
-        labels.append(node); items.push({ x, y, node });
+        labels.append(node); items.push({ x, y, node, key: w.id });
       }
       const [x, y] = project(m.lat, m.lon), q = small() ? 14 : 16, f = U.siteFigures(state.view);
-      const ref = sv("rect", { x: x - q / 2, y: y - q / 2, width: q, height: q, fill: "var(--ink)", stroke: "#fff", "stroke-width": 2, class: "dot",
-        tabindex: 0, role: "img", "aria-label": `${m.name} refinery, ${fmt(f.thru)} barrels per day processed` });
-      hover(ref, () => U.briefRefinery(state.view));
+      const ref = sv("rect", { x: x - q / 2, y: y - q / 2, width: q, height: q, fill: "#0f1b2d", stroke: "#fff", "stroke-width": 2, class: "dot",
+        "data-k": "REF", tabindex: 0, role: "img", "aria-label": `${m.name} refinery, ${fmt(f.thru)} barrels per day processed` });
+      hover(ref, "REF", () => U.briefRefinery(state.view));
       ref.addEventListener("click", e => U.showTip(tip, e, U.briefRefinery(state.view)));
       dots.append(ref);
-      const node = el("div", { class: "tag ref" }, el("div", { class: "n" }, "Refinery"), el("div", { class: "v" }, `${fmt(f.thru)} bbl/d`));
-      hover(node, () => U.briefRefinery(state.view));
-      labels.append(node); items.push({ x, y, node });
+      const node = el("div", { class: "tag ref", "data-k": "REF" }, el("div", { class: "n" }, "Refinery"), el("div", { class: "v" }, fmt(f.thru), el("small", {}, " bbl/d")));
+      hover(node, "REF", () => U.briefRefinery(state.view));
+      labels.append(node); items.push({ x, y, node, key: "REF" });
     }
     for (const it of items) { it.w = it.node.offsetWidth; it.h = it.node.offsetHeight; }
     placeAll(items, state.view ? 9 : (small() ? 12 : 18));
     const leads = sv("g", { "aria-hidden": "true" });
     for (const it of items) if (it.lead && (!state.view || Math.hypot(it.lead[2] - it.lead[0], it.lead[3] - it.lead[1]) > 16)) {
       const [x1, y1, x2, y2] = it.lead;
-      leads.append(sv("line", { class: "lead", x1, y1, x2, y2 }));
+      leads.append(sv("line", { class: "lead", x1, y1, x2, y2, "data-k": it.key }));
     }
     over.append(leads, dots);
   }
 
-  // ---------------------------------------------------------------- chrome
-  const back = () => el("button", { type: "button", onclick: closeSite },
-    sv("svg", { width: 14, height: 14, viewBox: "0 0 14 14", "aria-hidden": "true" }, sv("path", { d: "M9 3 5 7l4 4", stroke: "currentColor", "stroke-width": 1.6, fill: "none", "stroke-linecap": "round" })), "All sites");
+  // ---------------------------------------------------------------- pane: ranked list + legend
+  function row(key, name, value, unit, frac, word, onclick) {
+    const b = el("button", { type: "button", class: `row${word && word.cls === "off" ? " off" : ""}`, "data-k": key, onclick },
+      el("span", { class: "nm" }, name), el("span", { class: "val" }, value, unit ? el("small", {}, ` ${unit}`) : null),
+      el("span", { class: "bar", "aria-hidden": "true" }, el("i", { style: `width:${Math.max(0, Math.min(100, frac * 100)).toFixed(1)}%` })),
+      word && word.cls !== "off" ? el("span", { class: `why ${word.cls}` }, word.reason ? `${word.text}: ${word.reason}` : word.text) : null);
+    // the row already carries the numbers: hovering it only highlights the mark on the map
+    b.addEventListener("pointerenter", () => hl(key));
+    b.addEventListener("pointerleave", () => hl(null));
+    b.addEventListener("focus", () => hl(key));
+    b.addEventListener("blur", () => hl(null));
+    return b;
+  }
 
+  function renderList() {
+    const list = $("list");
+    if (!state.view) {
+      const sites = M.sites.map(m => ({ m, oil: U.siteFigures(m.code).oil })).sort((a, b) => b.oil - a.oil);
+      const mx = Math.max(1, ...sites.map(s => s.oil));
+      $("listTitle").textContent = "Sites"; $("listSub").textContent = "Oil production, bbl/d · highest first";
+      list.replaceChildren(...sites.map(({ m, oil }) => row(m.code, m.name, fmt(oil), "", oil / mx, siteWord(m.code), () => openSite(m.code))));
+    } else {
+      const m = SITES[state.view], s = state.data.sites[state.view];
+      const wells = m.wells.map(w => ({ w, v: s.wells[w.id] })).sort((a, b) => (b.v.oil || 0) - (a.v.oil || 0));
+      const mx = Math.max(1, ...wells.map(x => x.v.oil || 0));
+      $("listTitle").textContent = "Wells"; $("listSub").textContent = "Oil rate, bbl/d · highest first";
+      const showTip = (key, fn) => () => {
+        const d = over.querySelector(`[data-k="${CSS.escape(key)}"]`);
+        if (d) { const r = d.getBoundingClientRect(); U.showTip(tip, { clientX: r.right, clientY: r.top }, fn()); }
+      };
+      list.replaceChildren(...wells.map(({ w, v }) => {
+        const word = wellWord(v);
+        return row(w.id, w.name, word && word.cls === "off" ? word.text : fmt(v.oil), word && word.cls === "off" ? "" : "", (v.oil || 0) / mx, word,
+          showTip(w.id, () => U.briefWell(state.view, w.id)));
+      }));
+    }
+  }
+
+  function renderLegend() {
+    $("ramp").replaceChildren(...BANDS.map(c => el("span", { style: `background:${c}` })));
+    $("rampTitle").textContent = state.view ? "Oil rate around each well" : "Oil production around each site";
+    $("rampHigh").textContent = state.view ? "High (busiest well)" : "High (busiest site)";
+    const key = (cls, text) => el("span", {}, el("i", { class: cls }), text);
+    $("keys").replaceChildren(...(state.view
+      ? [key("", "Producing well"), key("watch", "Starting up"), key("bad", "Tripped"), key("off", "Shut in / workover"), key("sq", "Refinery")]
+      : [key("", "Site, normal"), key("watch", "Watch"), key("bad", "Alert")]));
+  }
+
+  // ---------------------------------------------------------------- top bar
   function renderChrome() {
-    const t = $("title"); t.replaceChildren();
-    document.body.classList.toggle("site", !!state.view);
+    const sum = $("summary");
     if (state.view) {
-      const m = SITES[state.view], f = U.siteFigures(state.view);
-      t.append(back(), el("h1", {}, `${m.name}, ${m.country}`),
-        el("p", {}, el("b", {}, `${fmt(f.oil)} bbl/d`), ` oil · ${f.producing} of ${f.wells} wells producing`),
-        el("a", { class: "plant", href: `plant.html#${state.view}` }, "View the plant →"));
+      const m = SITES[state.view], f = U.siteFigures(state.view), word = siteWord(state.view);
+      $("h1").textContent = `${m.name}, ${m.country}`;
+      sum.replaceChildren(el("button", { type: "button", onclick: closeSite, title: "Back to all sites (Esc)" }, "All sites"), " › ",
+        `${fmt(f.oil)} bbl/d oil · ${f.producing} of ${f.wells} wells producing · `,
+        word ? el("b", {}, word.reason ? `${word.text}: ${word.reason}` : word.text) : "normal");
+      $("plant").hidden = false; $("plant").href = `plant.html#${state.view}`;
     } else {
       const T = U.totals(), flagged = T.levels.warning + T.levels.critical;
-      t.append(el("h1", {}, "Cordillera Petróleo"),
-        el("p", {}, el("b", {}, `${fmt(T.oil)} bbl/d`), ` oil · ${flagged ? `${flagged} of ${M.sites.length} sites need attention` : "all sites normal"}`));
+      $("h1").textContent = "Cordillera Petróleo";
+      sum.replaceChildren(`${fmt(T.oil)} bbl/d oil · ${T.producing} of ${T.wells} wells producing · `,
+        flagged ? el("b", {}, `${flagged} of ${M.sites.length} sites need attention`) : "all sites normal");
+      $("plant").hidden = true;
     }
     const pv = $("pv"), url = U.piVisionUrl(state.view);
     pv.hidden = !url; if (url) pv.href = url;
-
-    const lg = $("legend"); lg.replaceChildren();
-    lg.title = state.view ? "Relative to the busiest well at this site" : "Relative to the busiest site";
-    lg.append(el("div", { class: "h" }, state.view ? "Oil rate" : "Oil production"),
-      el("div", { class: "sw" }, BANDS.map(c => el("span", { style: `background:${c}` }))),
-      el("div", { class: "ends" }, el("span", {}, "Low"), el("span", {}, "High")));
-    const keys = el("div", { class: "keys" });
-    if (state.view) keys.append(el("span", {}, el("i", {}), "Producing"), el("span", {}, el("i", { class: "off" }), "Stopped"));
-    else {
-      const T = U.totals();
-      if (T.levels.warning) keys.append(el("span", {}, flag("warning"), "Watch"));
-      if (T.levels.critical) keys.append(el("span", {}, flag("critical"), "Alert"));
-    }
-    if (keys.childNodes.length) lg.append(keys);
-    $("asof").textContent = U.asOfText();
-    const hdr = document.querySelector("header.top").getBoundingClientRect(), ftr = document.querySelector("footer.bottom").getBoundingClientRect();
-    document.body.style.setProperty("--fade-top", `${Math.ceil(hdr.bottom + 40)}px`);
-    document.body.style.setProperty("--fade-bottom", `${Math.ceil(H() - ftr.top + 30)}px`);
+    $("site").value = state.view || "";
+    // Signal: always say where the numbers come from
+    const when = new Date(state.data.asOf).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+    $("asof").textContent = `${state.data.live ? `PI Web API, ${(CFG.piwebapi || {}).afServer}` : "Demo data (simulator)"} · current values, ${when} · refreshed every ${CFG.refreshSeconds || 60} s`;
+    renderList(); renderLegend();
   }
 
   // ---------------------------------------------------------------- views
@@ -286,24 +312,43 @@
     state.view = code; tip.hidden = true;
     try { history.replaceState(null, "", code ? `#${code}` : location.pathname + location.search); } catch (_) { /* sandboxed */ }
     const map = $("map"), reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!reduce) { map.classList.add("out"); await new Promise(r => setTimeout(r, 220)); }
+    if (!reduce) { map.classList.add("out"); await new Promise(r => setTimeout(r, 200)); }
     if (code) image(R.sites[code].img).catch(() => {});
     await render();
     map.classList.remove("out");
+    if (small()) document.body.classList.remove("pane-open");
   }
   const openSite = code => switchTo(code);
   const closeSite = () => switchTo(null);
 
+  // left pane: open on desktop unless collapsed last time; a drawer on phones
+  function setPane(open) {
+    document.body.classList.toggle("pane-open", open);
+    try { localStorage.setItem("cp.topo.pane", open ? "open" : "closed"); } catch (_) { /* no storage */ }
+    render();
+  }
+
   async function main() {
     try { await U.load(); } catch (e) { $("asof").textContent = `Could not load data: ${e.message}`; return; }
-    U.designSwitcher($("designs"), "topo.html");
+    $("site").replaceChildren(el("option", { value: "" }, "All sites"), ...M.sites.map(s => el("option", { value: s.code }, `${s.name}, ${s.country}`)));
+    $("site").addEventListener("change", e => switchTo(e.target.value || null));
+    for (const b of document.querySelectorAll("[data-open]")) b.addEventListener("click", () => setPane(true));
+    $("paneClose").addEventListener("click", () => setPane(false));
+    $("paneBtn").addEventListener("click", () => setPane(!document.body.classList.contains("pane-open")));
+    let pane = null;
+    try { pane = localStorage.getItem("cp.topo.pane"); } catch (_) { /* no storage */ }
+    if (!small() && pane !== "closed") document.body.classList.add("pane-open");
     const start = location.hash.slice(1);
     state.view = SITES[start] ? start : null;
     await render();
     let t;
     window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(render, 120); });
-    document.addEventListener("keydown", e => { if (e.key === "Escape" && state.view) closeSite(); });
-    document.addEventListener("pointerdown", e => { if (e.pointerType !== "mouse" && !e.target.closest(".dot, .tag")) tip.hidden = true; });
+    document.addEventListener("keydown", e => {
+      if (e.key !== "Escape") return;
+      if (small() && document.body.classList.contains("pane-open")) document.body.classList.remove("pane-open");
+      else if (state.view) closeSite();
+    });
+    document.addEventListener("pointerdown", e => { if (e.pointerType !== "mouse" && !e.target.closest(".dot, .tag, .row")) tip.hidden = true; });
     window.addEventListener("hashchange", () => { const c = location.hash.slice(1); if (SITES[c] && c !== state.view) openSite(c); else if (!c && state.view) closeSite(); });
     U.autoRefresh(render);
   }

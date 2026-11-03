@@ -25,11 +25,19 @@ A link like `topo.html#BAR` opens a site directly in any design.
 
 ### Topo (`topo.html`, recommended landing page)
 
-A paper-style contour map (real terrain) with oil production drawn on it as 6 colored contour
-bands. The bands are computed live in the browser from the current PI values, relative to the
-busiest site (company view) or the busiest well (site view). Sites with a watch or alert show a
-small flag on their chip. Click a site to open its wellfield: dark dots are producing wells,
-hollow dots are stopped, red is tripped, the square is the refinery.
+A contour map (real terrain) with oil production drawn on it as contour bands, computed live in the
+browser from the current PI values, relative to the busiest site (company view) or the busiest well
+(site view). It uses the same frame as the plant view and the **Signal** design system:
+
+- **Top bar:** the title with one line saying how the company or the site is doing (oil, wells
+  producing, how many sites need attention and why), **View the plant** (site view), **Open in PI
+  Vision** and the site selector.
+- **Left pane** (collapses to a rail, a drawer on phones): the sites, or the site's wells, ranked by oil
+  production as labelled bars, with problems in words; the legend; where the numbers come from.
+- **Colours:** production on Signal's blue sequential scale; problems in orange with a word (Watch,
+  Alert, Tripped), never green vs red; the site or well you point at turns highlight blue on the map
+  and in the list at the same time.
+- Click a site to open its wells; **All sites** in the top bar or `Esc` goes back.
 
 The terrain images are pre-rendered and committed (`img/topo/`, ~4.7 MB). To regenerate them, e.g.
 after moving a site or adding one, run `python dashboard/build_relief.py` (needs numpy, Pillow and

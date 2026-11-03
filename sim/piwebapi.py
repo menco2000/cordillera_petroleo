@@ -8,7 +8,40 @@ CSRF = {"X-Requested-With": "XMLHttpRequest"}
 
 
 class PIWebAPIError(RuntimeError):
-    pass
+    def __init__(self, msg, status=None):
+        super().__init__(msg)
+        self.status = status
+
+
+def explain(e, api):
+    """Readable cause and fix for the errors people hit when first connecting."""
+    head = f"Could not talk to PI Web API at {api.base} (data server {api.server}).\n"
+    if "YOUR-" in api.base:
+        return head + "sim/config.toml still has the example url. Set it to your server, e.g. https://PISERVER/piwebapi"
+    if isinstance(e, requests.exceptions.SSLError):
+        return head + ("The server's HTTPS certificate is not trusted by Python (PI Web API usually has a "
+                       "self-signed one).\nFix: in sim/config.toml set ca_bundle to the certificate .pem/.cer, "
+                       "or verify_ssl = false for a test.\nDetail: " + str(e)[:300])
+    if isinstance(e, (requests.exceptions.ConnectionError, requests.exceptions.Timeout)):
+        return head + ("The server did not answer. Check the url in sim/config.toml (it must end in /piwebapi), "
+                       "that you can open it in a browser on this machine, and the firewall (port 443).\n"
+                       "Detail: " + str(e)[:300])
+    if isinstance(e, ImportError):
+        return head + (f"A Python package for the chosen auth is missing ({e.name}). For auth = \"kerberos\" "
+                       "on Windows run: pip install requests-negotiate-sspi")
+    if isinstance(e, PIWebAPIError) and e.status == 401:
+        return head + ("PI Web API refused the login (401). With auth = \"kerberos\" on Windows install "
+                       "requests-negotiate-sspi and run as a user PI Web API accepts; or set auth = \"basic\" "
+                       "with username and the password in the PIWEBAPI_PASSWORD environment variable.")
+    if isinstance(e, PIWebAPIError) and e.status in (400, 404) and "dataservers" in str(e):
+        names = []
+        try:
+            names = [d["Name"] for d in api._get("dataservers", selectedFields="Items.Name").get("Items", [])]
+        except Exception:
+            pass
+        return head + (f"No PI Data Archive called '{api.server}'. Set data_server in sim/config.toml to one of: "
+                       f"{', '.join(names) or '(could not list them)'}\nDetail: {e}")
+    return head + f"{type(e).__name__}: {e}"
 
 
 def make_auth(cfg):
@@ -51,7 +84,7 @@ class PIWebAPI:
     def _get(self, endpoint, **params):
         r = self.s.get(f"{self.base}/{endpoint}", params=params, timeout=self.timeout)
         if r.status_code >= 400:
-            raise PIWebAPIError(f"GET {endpoint} -> {r.status_code}: {r.text[:400]}")
+            raise PIWebAPIError(f"GET {endpoint} -> {r.status_code}: {r.text[:400]}", r.status_code)
         return r.json()
 
     def server_id(self):
@@ -87,7 +120,7 @@ class PIWebAPI:
             r = self.s.post(f"{self.base}/streamsets/recorded", json=body, timeout=self.timeout,
                             params={"updateOption": update_option, "bufferOption": "BufferIfPossible"})
             if r.status_code >= 400:
-                raise PIWebAPIError(f"POST streamsets/recorded -> {r.status_code}: {r.text[:400]}")
+                raise PIWebAPIError(f"POST streamsets/recorded -> {r.status_code}: {r.text[:400]}", r.status_code)
             if r.status_code == 207:
                 errs = [i for i in r.json().get("Items", []) if i.get("Status", 202) >= 400]
                 if errs:
