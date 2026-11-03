@@ -229,14 +229,6 @@ export function asOfText() {
   return ctx.asOf || ctx.live ? U.freshness(ctx.asOf, ctx.live).source : "";
 }
 
-// newest PI timestamp among one element's values
-function newestOf(n, attrs) {
-  const ts = attrs.map(a => ctx.times[`${n.tag}.${a[1]}`]).filter(Boolean).sort();
-  if (!ts.length) return ctx.live ? "no timestamps" : "demo snapshot";
-  const t = ts.at(-1);
-  return `newest value ${U.when(t)} (${U.ago(Date.now() - new Date(t).getTime())})`;
-}
-
 export function renderInfo(it, select) {
   const n = it.node, st = statusOf(it), attrs = P.templates[n.template] || [], values = ctx.values;
   const kind = ["Site", "Area", "Unit", "Equipment"][Math.min(3, it.depth)];
@@ -257,8 +249,6 @@ export function renderInfo(it, select) {
     props.length ? el("div", { class: "sec" }, el("h3", {}, "Configuration"), el("table", {}, props.map(([k, v]) => el("tr", {}, el("td", {}, k), el("td", {}, fmtV(v)))))) : null,
     kids.length ? el("div", { class: "sec" }, el("h3", {}, it.depth === 2 && n.template === "Wellfield" ? "Wells" : "Contains"),
       el("div", { class: "kids" }, kids.map(k => el("button", { type: "button", onclick: () => select(k) }, k.node.name)))) : null,
-    el("div", { class: "sec" }, el("h3", {}, "AF path"), el("div", { class: "meta" }, `\\\\${CFG.piwebapi?.afServer}\\${M.database}\\${n.path}`),
-      rows.length ? el("p", { class: "source" }, `${ctx.live ? "PI Web API" : "Demo data"} · PI tags ${n.tag}.* · ${newestOf(n, attrs)}`) : null),
   ].filter(Boolean));
 }
 

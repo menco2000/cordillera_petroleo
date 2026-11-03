@@ -144,21 +144,15 @@
     tip.style.left = `${Math.max(8, x)}px`; tip.style.top = `${y}px`;
   }
 
-  // How current the numbers are. PI timestamps, not the time the page asked: if nothing has been
-  // written for a while (simulator stopped, interface down) the page says so in words.
+  // How current the numbers are: the newest PI timestamp among the values, not the time the page asked.
   const ago = ms => { const m = Math.round(ms / 60000); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 48 * 60 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
   const when = t => new Date(t).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
   function freshness(asOf, live) {
     const src = live ? `PI Web API, ${(CFG.piwebapi || {}).afServer}` : "Demo data (simulator)";
-    if (!asOf) return { source: `${src} · no timestamps in the values`, stale: live ? "No value has a timestamp: check that the PI points exist and have data." : null, short: null };
-    const age = Date.now() - new Date(asOf).getTime(), limit = Math.max(10 * 60000, 3 * (CFG.refreshSeconds || 60) * 1000);
-    const stale = live && age > limit;
-    return {
-      source: live ? `${src} · newest value ${when(asOf)} (${ago(age)}) · checked every ${CFG.refreshSeconds || 60} s` : `${src} · snapshot of ${when(asOf)}`,
-      stale: stale ? `Values are not up to date: the newest one is from ${when(asOf)}, ${ago(age)}. Is the simulator (python -m sim run) or the data interface writing to PI?` : null,
-      short: stale ? `data ${ago(age).replace(" ago", " old")}` : null,
-    };
+    if (!asOf) return { source: `${src} · no timestamps in the values` };
+    return { source: live ? `${src} · newest value ${when(asOf)} (${ago(Date.now() - new Date(asOf).getTime())}) · checked every ${CFG.refreshSeconds || 60} s` : `${src} · snapshot of ${when(asOf)}` };
   }
+
 
   function asOfText() {
     const d = new Date(state.data.asOf);

@@ -58,7 +58,7 @@ with its pipe rack behind it and a cross rack joining them.
   model: grey when normal, light orange when reduced or starting, orange when tripped or upset, pale
   grey when stopped. Tank fills follow *Level*, heater fireboxes glow when fuel gas is flowing.
 - **Navigation:** drag to pan, scroll or pinch to zoom, arrow keys and `+`/`-`. Click any element in the
-  drawing or the tree to zoom to it and see its PI values, configuration and AF path. `Esc` goes up one
+  drawing or the tree to zoom to it and see its PI values and configuration (hover a value for its PI timestamp). `Esc` goes up one
   level (and back to the whole site at the top); double-click empty ground for the whole site. Links
   like `plant.html#BAR/BAR-C-101` open a site with an element selected.
 - **Look:** colours, type and spacing follow the **Signal** design system: one highlight colour (blue)

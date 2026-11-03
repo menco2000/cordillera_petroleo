@@ -293,9 +293,8 @@
     // Signal: always say where the numbers come from, and how old they are
     const fr = U.freshness(state.data.asOf, state.data.live);
     $("asof").textContent = fr.source;
-    const pe = $("pierr"), why = !state.data.live && state.piError ? `Why not live: ${state.piError}` : fr.stale;
+    const pe = $("pierr"), why = !state.data.live && state.piError ? `Why not live: ${state.piError}` : null;
     pe.hidden = !why; pe.textContent = why || "";
-    if (fr.short) sum.append(" · ", el("b", { title: fr.stale }, fr.short));
     renderList(); renderLegend();
   }
 
