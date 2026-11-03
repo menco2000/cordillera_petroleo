@@ -6,7 +6,7 @@ import {
   $, U, CFG, fmt, PRODUCTS, TANK_PRODUCT, LEVEL_HEX, GROUND, layoutSite, ctx, statusOf, statusAttr, STATUS_LEVEL,
   updatePipes, tankFraction, fetchValues, initialValues, renderInfo, renderTreeDots, showSelection, freeArea,
   pipeTip, placeTip, asOfText, wirePage,
-} from "./plant-core.js";
+} from "./plant-core.js?v=2026.11.03";
 
 const svg = $("scene");
 // industrial look: galvanised equipment, yellow structural steel, concrete pads (line colours in plant.html)
