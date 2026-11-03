@@ -1,5 +1,4 @@
-// Shared by every map design: data loading, status rules and tooltip content.
-// Each design only decides how things look.
+// Shared by the map (topo.html) and the plant view: data loading, status rules and tooltip content.
 (function () {
   "use strict";
   const M = window.CP_MODEL, CFG = window.CP_CONFIG || { source: "demo" };
@@ -29,7 +28,6 @@
   }
   const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const fmt = (v, d = 0) => v == null || Number.isNaN(+v) ? "—" : (d ? nf1 : nf0).format(v);
-  const merc = lat => (180 / Math.PI) * Math.log(Math.tan(Math.PI / 4 + (Math.max(-85, Math.min(85, lat)) * Math.PI) / 360));
 
   // ---------------------------------------------------------------- status
   const LEVEL = {
@@ -98,6 +96,17 @@
   }
 
   // ---------------------------------------------------------------- data
+  // why the browser could not read PI Web API, in words someone can act on (shown on the pages)
+  function explainPI(e) {
+    const url = (CFG.piwebapi || {}).url, m = String(e && e.message || e);
+    if (e && e.name === "AbortError") return `PI Web API at ${url} did not answer in time.`;
+    if (/HTTP 401/.test(m)) return `PI Web API refused the login (401): the browser must send your Windows login. Add ${url.replace(/\/piwebapi.*$/, "")} to the Local intranet sites (Internet Options > Security) or allow it in your browser policy.`;
+    if (/HTTP 403/.test(m)) return `PI Web API answered 403: your Windows user has no read access to the AF database, or PI Web API blocks this request.`;
+    if (/HTTP (404|400)/.test(m)) return `PI Web API answered ${m.match(/HTTP \d+/)[0]}: check piwebapi.url, afServer and the AF database name in config.js (${m}).`;
+    if (e instanceof TypeError) return `The browser could not reach PI Web API at ${url}. Usually: its HTTPS certificate is not trusted (open the url once in this browser), or PI Web API does not allow this page's address (CORS, see the README).`;
+    return `PI Web API error: ${m}`;
+  }
+
   async function load(note) {
     const want = CFG.source || "auto";
     const { demoSource, piSource } = window.CP_SOURCES;
@@ -108,8 +117,9 @@
         state.source = src;
         return;
       } catch (e) {
-        if (want === "piwebapi") throw e;
-        note && note(`PI Web API not reachable (${e.message}). Showing simulated demo data.`);
+        state.piError = explainPI(e);
+        if (want === "piwebapi") throw new Error(state.piError);
+        note && note(`${state.piError} Showing simulated demo data.`);
       }
     }
     state.source = demoSource();
@@ -123,41 +133,7 @@
     }, (CFG.refreshSeconds || 60) * 1000);
   }
 
-  // ---------------------------------------------------------------- tooltip content
-  const kv = pairs => el("div", { class: "kv" }, pairs.flatMap(([a, b]) => [el("span", {}, a), el("span", {}, b)]));
-
-  function siteTip(code, hint = "Click to see the wells") {
-    const m = SITES[code], f = siteFigures(code), st = siteStatus(code);
-    return [el("h3", {}, `${m.name}, ${m.country}`), pill(st.level),
-      kv([["Oil production", `${fmt(f.oil)} bbl/d`], ["Refinery throughput", `${fmt(f.thru)} bbl/d`],
-        ["Utilization", `${fmt(f.util)}% of ${fmt(f.capacity)}`], ["Wells producing", `${f.producing} of ${f.wells}`],
-        ["Water cut", f.wc == null ? "—" : `${fmt(f.wc, 1)}%`]]),
-      st.reasons.length ? el("div", { class: "why" }, st.reasons.slice(0, 3).join(" · ")) : null,
-      hint ? el("div", { class: "hint" }, hint) : null].filter(Boolean);
-  }
-
-  function wellTip(code, id) {
-    const w = SITES[code].wells.find(x => x.id === id), v = state.data.sites[code].wells[id];
-    return [el("h3", {}, w.name), pill(WELL_LEVEL[v.status] || "planned", v.status),
-      kv([["Oil rate", `${fmt(v.oil)} bbl/d`], ["Water cut", v.wc == null ? "—" : `${fmt(v.wc, 1)}%`],
-        ["Oil today", `${fmt(v.dayOil)} bbl`], ["Design rate", `${fmt(w.design)} bbl/d`], ["Lift", w.lift], ["Asset ID", w.id]]),
-      v.scenario && v.scenario !== "Normal" ? el("div", { class: "why" }, `Event: ${v.scenario}`) : null].filter(Boolean);
-  }
-
-  function refineryTip(code) {
-    const m = SITES[code], s = state.data.sites[code], f = siteFigures(code), st = siteStatus(code);
-    const ev = [...new Set(m.units.map(u => s.units[u.key]?.scenario).filter(x => x && x !== "Normal"))];
-    return [el("h3", {}, `${m.name} refinery`), pill(st.level),
-      kv([["Throughput", `${fmt(f.thru)} bbl/d`], ["Utilization", `${fmt(f.util)}%`],
-        ["Crude stock", f.crudeDays == null ? "—" : `${fmt(f.crudeDays, 1)} days`]]),
-      el("div", { class: "units" }, m.units.map(u => {
-        const v = s.units[u.key] || {};
-        return el("div", {}, el("span", {}, pill(UNIT_LEVEL[v.status] || "good", u.label)),
-          el("span", { class: "m" }, `${fmt(v.metric, u.metricUom === "bbl/d" ? 0 : 1)} ${u.metricUom}`));
-      })),
-      ev.length ? el("div", { class: "why" }, `Events: ${ev.join(", ")}`) : null].filter(Boolean);
-  }
-
+  // ---------------------------------------------------------------- tooltips
   function showTip(tip, e, content) {
     tip.replaceChildren(...content);
     tip.hidden = false;
@@ -200,16 +176,8 @@
     return tpl ? tpl.replace("{asset}", encodeURIComponent(asset)) : pv.home || null;
   }
 
-  // the views a user can switch between
-  const DESIGNS = [["topo.html", "Topo"], ["map3d.html", "3D"], ["hex.html", "Hex"]];
-  function designSwitcher(container, current) {
-    container.replaceChildren(...DESIGNS.map(([href, label]) =>
-      el("a", { href: href + location.hash, class: href === current ? "on" : null, "aria-current": href === current ? "page" : null }, label)));
-  }
-
   window.CP_UI = {
-    M, SITES, CFG, state, el, sv, esc, fmt, merc, LEVEL, WELL_LEVEL, UNIT_LEVEL, UNIT_TEXT, icon, pill,
-    siteStatus, siteFigures, totals, load, autoRefresh, kv, siteTip, wellTip, refineryTip, showTip, asOfText, designSwitcher,
-    briefSite, briefWell, briefRefinery, piVisionUrl,
+    M, SITES, CFG, state, el, sv, esc, fmt, LEVEL, WELL_LEVEL, UNIT_LEVEL, UNIT_TEXT, icon, pill,
+    siteStatus, siteFigures, totals, load, autoRefresh, showTip, asOfText, briefSite, briefWell, briefRefinery, piVisionUrl,
   };
 })();

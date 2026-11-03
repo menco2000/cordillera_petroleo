@@ -105,6 +105,7 @@ details.sec[open] summary::after { content: "▾"; }
 .keys i.watch { background: #eaa56a; } .keys i.bad { background: var(--delta-bad); }
 .keys i.sq { border-radius: 1px; }
 .foot { padding: var(--space-3) var(--space-4); display: grid; gap: var(--space-1); }
+.source.pierr { color: var(--delta-bad); font-weight: 600; }
 
 /* ---------------------------------------------------------------- map */
 #stage { position: fixed; top: calc(var(--bar-h) + env(safe-area-inset-top, 0px)); left: var(--rail-w); right: 0; bottom: 0; overflow: hidden; background: var(--surface); }
@@ -190,7 +191,7 @@ svg.ic { width: 12px; height: 12px; flex: none; }
       <div><div class="ramp" id="ramp"></div><div class="ends"><span>Low</span><span id="rampHigh">High</span></div></div>
       <span class="kicker">Marks</span><div class="keys" id="keys"></div>
     </details>
-    <div class="foot"><p class="source" id="asof"></p><p class="source">Click a site to see its wells · Esc goes back · bands are relative to the busiest site or well</p></div>
+    <div class="foot"><p class="source" id="asof"></p><p class="source pierr" id="pierr" hidden></p><p class="source">Click a site to see its wells · Esc goes back · bands are relative to the busiest site or well</p></div>
   </div>
 </aside>
 

@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """Build the dashboard's static data files.
 
-    python dashboard/build_data.py --geojson ne_50m_admin_0_countries.geojson
-    python dashboard/build_data.py            (keeps the existing map.js)
+    python dashboard/build_data.py
 
 Writes
   dashboard/data/model.js  sites, wells and AF element paths from model/model.json
-  dashboard/data/map.js    country outlines, offline fallback for the satellite map (Natural Earth 1:50m)
   dashboard/data/plant.js  each site's AF element tree with its PI attributes, for the plant view
   dashboard/data/demo.js   ~90 days of simulator output, used when PI Web API is not reachable
 """
@@ -24,7 +22,6 @@ sys.path.insert(0, str(ROOT))
 from sim.core import DAY  # noqa: E402
 from sim.engine import Engine, load_model  # noqa: E402
 
-BBOX = (-93.0, -57.0, -32.0, 14.5)  # lon_min, lat_min, lon_max, lat_max
 UNITS = [  # (key, element id suffix, status attribute, label)
     ("GT", "GT", "Unit Status", "Gathering & Transfer"),
     ("CDU", "CDU100", "Unit Status", "Atmospheric Distillation"),
@@ -129,36 +126,6 @@ def build_plant(model):
         collect(s)
         sites[s["id"]] = plant_node(s, attrs)
     return {"templates": {k: v for k, v in attrs.items() if k in used}, "sites": sites}
-
-
-# ---------------------------------------------------------------- map.js
-def build_map(geojson_path):
-    """Country outlines as [lat, lon] rings: offline fallback when satellite tiles can't load."""
-    d = json.loads(Path(geojson_path).read_text(encoding="utf-8"))
-    lo0, la0, lo1, la1 = BBOX
-    shapes = []
-    for f in d["features"]:
-        g = f["geometry"]
-        polys = g["coordinates"] if g["type"] == "MultiPolygon" else [g["coordinates"]]
-        rings = []
-        for poly in polys:
-            ring = poly[0]
-            lons = [p[0] for p in ring]
-            lats = [p[1] for p in ring]
-            if max(lons) < lo0 or min(lons) > lo1 or max(lats) < la0 or min(lats) > la1:
-                continue
-            pts, last = [], None
-            for lon, lat in ring:
-                p = [round(lat, 3), round(lon, 3)]
-                if p != last:
-                    pts.append(p)
-                    last = p
-            if len(pts) >= 4:
-                rings.append(pts)
-        if rings:
-            shapes.append({"name": f["properties"]["NAME"], "sa": f["properties"].get("CONTINENT") == "South America",
-                           "rings": rings})
-    return {"bbox": BBOX, "shapes": shapes, "source": "Natural Earth 1:50m admin-0 countries (public domain)"}
 
 
 # ---------------------------------------------------------------- demo.js
@@ -295,14 +262,11 @@ def write_js(name, var, data):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--geojson", help="Natural Earth ne_50m_admin_0_countries.geojson")
     ap.add_argument("--no-demo", action="store_true")
     args = ap.parse_args()
     model = load_model()
     write_js("model.js", "CP_MODEL", build_model(model))
     write_js("plant.js", "CP_PLANT", build_plant(model))
-    if args.geojson:
-        write_js("map.js", "CP_MAP", build_map(args.geojson))
     if not args.no_demo:
         write_js("demo.js", "CP_DEMO", build_demo(model))
 

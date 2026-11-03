@@ -20,11 +20,4 @@ window.CP_CONFIG = {
     // used by the plant view for the selected element (falls back to siteDisplay)
     elementDisplay: "",
   },
-  map: {
-    // Satellite imagery and place-name overlay (needs internet from the viewer's browser).
-    // If the imagery can't load, the map falls back to offline country outlines.
-    imagery: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    labels: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-    attribution: "Imagery &copy; Esri, Maxar, Earthstar Geographics, and the GIS User Community",
-  },
 };

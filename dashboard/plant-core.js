@@ -166,7 +166,7 @@ export function layoutSite(code, makePart) {
   const sep = S("SEP-001"), wf = byId[`${code}-WF`];
   let lane = 0;
   if (sep && wf) for (const w of wf.children) {
-    const l = lane++, a = portOf(w, 0, "out"), y = 1.1;
+    const l = lane++, a = portOf(w, 0, "out"), y = 1.4;           // on sleepers, just above the pad
     const b = V(sep.wx - sep.part.w / 2 + 0.4, GROUND + 1.6, sep.wz);
     const zf = wf.wz + wf.d / 2 - 1.2 - (l % 4) * 0.35, xw = b.x - 1.2 - (l % 4) * 0.35;
     add([a, V(a.x, y, a.z), V(a.x, y, zf), V(xw, y, zf), V(xw, b.y, b.z), b], "crude", `${w.node.tag}.QO`, w, sep);

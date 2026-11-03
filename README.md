@@ -25,7 +25,7 @@ af/build_af_xml.py            builds the AF XML import files from model.json
 af/CordilleraPetroleo.xml     full import (templates, elements, analyses, notification rules)
 af/CordilleraPetroleo_NoAnalytics.xml   fallback import without analyses/notifications
 sim/                          simulator + PI Web API writer
-dashboard/                    landing maps for management (topo heat map, 3D, hex, satellite), read AF via PI Web API
+dashboard/                    map of all sites and plant view per site for management, read AF via PI Web API
 docs/                         model review page
 ```
 
@@ -79,6 +79,20 @@ pip install requests requests-negotiate-sspi     # Windows, Kerberos with the lo
 # or: pip install requests requests-ntlm         # NTLM
 copy sim\config.example.toml sim\config.toml     # then edit url, data_server, auth
 ```
+
+**Password (only for `auth = "basic"` or `"ntlm"`).** The simulator reads it from the environment
+variable named by `password_env` (default `PIWEBAPI_PASSWORD`), never from the file. To set it once
+for your Windows user, so every new terminal and scheduled task run as you has it:
+
+```
+setx PIWEBAPI_PASSWORD "your-password"
+```
+
+Then **open a new terminal** (setx doesn't change the one you're in) and check with
+`echo $env:PIWEBAPI_PASSWORD` (PowerShell). For a service or a task that runs as another account, set it
+for that account, or machine-wide from an admin prompt: `setx PIWEBAPI_PASSWORD "your-password" /M`.
+With `auth = "kerberos"` no password is needed: the simulator uses the Windows login it runs under.
+The web dashboard never uses this variable; see `dashboard/README.md`.
 
 The account needs write access to the `CP.*` points. PI Web API writes need
 `X-Requested-With` (the client sends it) and the PI Web API instance must not be read-only.

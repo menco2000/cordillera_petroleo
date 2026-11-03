@@ -293,6 +293,7 @@
     // Signal: always say where the numbers come from
     const when = new Date(state.data.asOf).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
     $("asof").textContent = `${state.data.live ? `PI Web API, ${(CFG.piwebapi || {}).afServer}` : "Demo data (simulator)"} · current values, ${when} · refreshed every ${CFG.refreshSeconds || 60} s`;
+    const pe = $("pierr"); pe.hidden = !state.piError || state.data.live; pe.textContent = state.piError ? `Why not live: ${state.piError}` : "";
     renderList(); renderLegend();
   }
 

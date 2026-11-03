@@ -10,7 +10,7 @@ import {
 
 const svg = $("scene");
 // industrial look: galvanised equipment, yellow structural steel, concrete pads (line colours in plant.html)
-const COL = { slab: "#d8d5cd", pad: "#c8c3b8", field: "#cfcab2", body: "#c3c9ce", body2: "#8f99a2", steel: "#e2b007", dark: "#2e343a", cellar: "#6f695e", water: "#76afbb" };
+const COL = { concrete: "#b9b4aa", slab: "#d8d5cd", pad: "#c8c3b8", field: "#cfcab2", body: "#c3c9ce", body2: "#8f99a2", steel: "#e2b007", dark: "#2e343a", cellar: "#6f695e", water: "#76afbb" };
 
 // ------------------------------------------------------------------ projection
 // classic isometric: x and z at ±30°, y straight up; depth (x + z) grows towards the viewer
@@ -59,8 +59,9 @@ function box(cx, y0, cz, w, h, d, color, cls = "", { top: withTop = true } = {})
   const right = [proj(a1, y0, b0), proj(a1, y0, b1), proj(a1, y1, b1), proj(a1, y1, b0)];
   const left = [proj(a0, y0, b1), proj(a1, y0, b1), proj(a1, y1, b1), proj(a0, y1, b1)];
   track(top); track(right); track(left);
+  const outline = hull(withTop ? top.concat(right, left) : right.concat(left));
   push(a + b, `<polygon class="o ${cls}" points="${pts(left)}" fill="${dark(color, 0.07)}"/><polygon class="o ${cls}" points="${pts(right)}" fill="${dark(color, 0.17)}"/>` +
-    (withTop ? `<polygon class="o ${cls}" points="${pts(top)}" fill="${color}"/>` : ""));
+    (withTop ? `<polygon class="o ${cls}" points="${pts(top)}" fill="${color}"/>` : "") + `<polygon class="sil ${cls}" points="${pts(outline)}" fill="none"/>`);
 }
 const band = (cx, y0, cz, w, h, d, color) => box(cx, y0, cz, w, h, d, color, "", { top: false });   // painted stripe round a box
 
@@ -76,10 +77,30 @@ const RX = Math.SQRT2 * C30, RY = Math.SQRT2 * S30;
 function cylV(cx, y0, cz, r, h, color, { dome = false, cap = true } = {}) {
   const [bx, by] = P(cx, y0, cz), [tx, ty] = P(cx, y0 + h, cz), rx = r * RX, ry = r * RY;
   track([[bx - rx, by + ry], [bx + rx, by + ry], [tx - rx, ty - (dome ? r : ry)], [tx + rx, ty - ry]]);
-  let s = `<path class="o" fill="${grad(color, false)}" d="M${f(bx + rx)},${f(by)} L${f(tx + rx)},${f(ty)} L${f(tx - rx)},${f(ty)} L${f(bx - rx)},${f(by)} A${f(rx)},${f(ry)} 0 0 0 ${f(bx + rx)},${f(by)}Z"/>`;
-  if (dome) s += `<path class="o" fill="${grad(color, false)}" d="M${f(tx - rx)},${f(ty)} A${f(rx)},${f(ry)} 0 0 0 ${f(tx + rx)},${f(ty)} A${f(rx)},${f(r * 0.95)} 0 0 0 ${f(tx - rx)},${f(ty)}Z"/>`;
+  let s = `<path class="sil" fill="${grad(color, false)}" d="M${f(bx + rx)},${f(by)} L${f(tx + rx)},${f(ty)} L${f(tx - rx)},${f(ty)} L${f(bx - rx)},${f(by)} A${f(rx)},${f(ry)} 0 0 0 ${f(bx + rx)},${f(by)}Z"/>`;
+  if (dome) s += `<path class="sil" fill="${grad(color, false)}" d="M${f(tx - rx)},${f(ty)} A${f(rx)},${f(ry)} 0 0 0 ${f(tx + rx)},${f(ty)} A${f(rx)},${f(r * 0.95)} 0 0 0 ${f(tx - rx)},${f(ty)}Z"/>`;
   else if (cap) s += `<ellipse class="o" cx="${f(tx)}" cy="${f(ty)}" rx="${f(rx)}" ry="${f(ry)}" fill="${light(color, 0.12)}"/>`;
   push(depthOf(cx, cz), s);
+}
+
+// a platform round a vertical vessel: the front half of the ring and its handrail
+function platform(cx, y, cz, R) {
+  const [px, py] = P(cx, y, cz), [hx, hy] = P(cx, y + 1, cz), rx = R * RX, ry = R * RY;
+  push(depthOf(cx, cz) + 0.02, `<path class="steel" d="M${f(px - rx)},${f(py)} A${f(rx)},${f(ry)} 0 0 0 ${f(px + rx)},${f(py)}" stroke-width="0.28"/>` +
+    `<path class="steel" d="M${f(hx - rx)},${f(hy)} A${f(rx)},${f(ry)} 0 0 0 ${f(hx + rx)},${f(hy)}" stroke-width="0.12"/>`);
+}
+// a straight ladder up the right-hand (+x) side of a vessel
+function ladder(cx, y0, y1, cz, r) {
+  const x = cx + r + 0.25, [a0, b0] = P(x, y0, cz - 0.25), [a1, b1] = P(x, y1, cz - 0.25), [c0, d0] = P(x, y0, cz + 0.25), [c1, d1] = P(x, y1, cz + 0.25);
+  let d = `M${f(a0)},${f(b0)}L${f(a1)},${f(b1)}M${f(c0)},${f(d0)}L${f(c1)},${f(d1)}`;
+  for (let y = y0 + 0.5; y < y1; y += 0.9) { const [p, q] = P(x, y, cz - 0.25), [u, v] = P(x, y, cz + 0.25); d += `M${f(p)},${f(q)}L${f(u)},${f(v)}`; }
+  push(depthOf(cx, cz) + 0.03, `<path class="steel" d="${d}" stroke-width="0.12"/>`);
+}
+// a stair winding up the front of a tank, with its handrail
+function stair(cx, y0, cz, r, h) {
+  const at = (t, lift) => { const a = (120 - 110 * t) * Math.PI / 180; return P(cx + (r + 0.35) * Math.cos(a), y0 + h * t + lift, cz + (r + 0.35) * Math.sin(a)); };
+  const line = lift => Array.from({ length: 13 }, (_, i) => at(i / 12, lift)).map(([x, y], i) => `${i ? "L" : "M"}${f(x)},${f(y)}`).join("");
+  push(depthOf(cx, cz) + 0.03, `<path class="steel" d="${line(0)}" stroke-width="0.3"/><path class="steel" d="${line(1)}" stroke-width="0.12"/>`);
 }
 
 function hull(p) {
@@ -100,7 +121,7 @@ function cylH(cx, cy, cz, r, len, axis, color, { caps = 0 } = {}) {
   const near = ring(len / 2), far = ring(-len / 2);
   const body = caps ? hull(near.concat(far, ring(len / 2 + caps), ring(-len / 2 - caps))) : hull(near.concat(far));
   track(body);
-  push(a + b, `<polygon class="o" points="${pts(body)}" fill="${grad(color, true)}"/>` + (caps ? "" : `<polygon class="o" points="${pts(near)}" fill="${light(color, 0.1)}"/>`));
+  push(a + b, `<polygon class="sil" points="${pts(body)}" fill="${grad(color, true)}"/>` + (caps ? "" : `<polygon class="o" points="${pts(near)}" fill="${light(color, 0.1)}"/>`));
 }
 
 // ------------------------------------------------------------------ equipment
@@ -133,16 +154,20 @@ function drawEquipment(it) {
   const acc = LEVEL_HEX[statusOf(it).level];
   cur = n.id;
   if (t === "Tank") {
-    const { r, h } = tankDims(n.props), prod = PRODUCTS[TANK_PRODUCT[n.props.Product] || "crude"], fr = tankFraction(n);
-    cylV(x, y, z, r, h, COL.body, { cap: false });
-    cylV(x, y, z, r + 0.04, h * fr, prod.color, { cap: fr > 0.97 });
-    cylV(x, y + h, z, r + 0.1, 0.5, COL.body2);
+    const { r, h } = tankDims(n.props), prod = PRODUCTS[TANK_PRODUCT[n.props.Product] || "crude"], fr = tankFraction(n), b = y + 0.35;
+    cylV(x, y, z, r + 0.5, 0.35, COL.concrete);              // ring foundation
+    cylV(x, b, z, r, h, COL.body, { cap: false });
+    cylV(x, b, z, r + 0.04, h * fr, prod.color, { cap: fr > 0.97 });
+    cylV(x, b + h, z, r + 0.1, 0.5, COL.body2);
+    stair(x, b, z, r, h);
   } else if (t === "Atmospheric Column" || t === "Vacuum Column") {
     const vac = t === "Vacuum Column", r = vac ? 1.9 : 1.45, h = vac ? 16 : 23;
     cylV(x, y, z, r * 1.08, 2, COL.body2);
     if (vac) { cylV(x, y + 2, z, r * 0.7, h * 0.45, COL.body, { cap: false }); cylV(x, y + 2 + h * 0.45, z, r, h * 0.55, COL.body, { dome: true }); }
     else cylV(x, y + 2, z, r, h, COL.body, { dome: true });
     cylV(x, y + 2 + h * 0.55, z, r + 0.06, 0.6, acc, { cap: false });
+    for (const k of vac ? [0.5, 0.85] : [0.33, 0.66, 0.95]) platform(x, y + 2 + h * k, z, r + 0.7);
+    ladder(x, y + 2, y + 2 + h, z, r);
   } else if (t === "Fired Heater") {
     box(x, y, z, 5, 0.6, 4.2, COL.body2);
     box(x, y + 0.6, z, 4.4, 5.5, 3.6, COL.body);
@@ -151,9 +176,10 @@ function drawEquipment(it) {
     cylV(x, y + 7.5, z, 0.5, 7, COL.body2);
     if (+v[`${n.tag}.QFG`] > 1) facePatch(x, z, 2.2, 1.8, y + 2.1, y + 2.6, 1.5, "#ff9a3c");    // firebox glow
   } else if (t === "Pump") {
-    box(x, y, z, 3.4, 0.35, 1.5, COL.dark);
-    cylH(x - 0.7, y + 0.95, z, 0.5, 1.5, "x", acc);
-    cylV(x + 0.85, y + 0.35, z, 0.55, 1.2, COL.body);
+    box(x, y, z, 3.8, 0.3, 1.9, COL.concrete);                 // plinth
+    box(x, y + 0.3, z, 3.4, 0.3, 1.5, COL.dark);
+    cylH(x - 0.7, y + 1.15, z, 0.5, 1.5, "x", acc);
+    cylV(x + 0.85, y + 0.6, z, 0.55, 1.1, COL.body);
   } else if (t === "Separator" || t === "Desalter") {
     const small = n.id.endsWith("V-301"), len = t === "Desalter" ? 6 : small ? 3.2 : 5, r = t === "Desalter" ? 1.3 : small ? 0.9 : 1.15, cy = y + r + 0.9;
     for (const dx of [-len * 0.32, len * 0.32]) box(x + dx, y, z, 0.5, r + 0.9, r * 1.5, COL.body2);
@@ -164,10 +190,13 @@ function drawEquipment(it) {
     cylV(x, y, z, 1.4, 2.4, COL.body2);
     cylV(x, y + 2.4, z, 1.35, 8.8, COL.body, { dome: true });
     cylV(x, y + 2.4 + 4.5, z, 1.4, 0.5, acc, { cap: false });
+    platform(x, y + 2.4 + 8.8, z, 2.0);
+    ladder(x, y + 2.4, y + 2.4 + 8.8, z, 1.35);
   } else if (t === "Compressor") {
-    box(x, y, z, 5, 0.4, 2.6, COL.dark);
-    box(x - 1.2, y + 0.4, z, 2.3, 2.1, 2.1, acc);
-    cylH(x + 1.3, y + 1.3, z, 0.85, 2.2, "x", COL.body);
+    box(x, y, z, 5.4, 0.3, 3, COL.concrete);                   // plinth
+    box(x, y + 0.3, z, 5, 0.3, 2.6, COL.dark);
+    box(x - 1.2, y + 0.6, z, 2.3, 2.1, 2.1, acc);
+    cylH(x + 1.3, y + 1.5, z, 0.85, 2.2, "x", COL.body);
   } else if (t === "Vacuum Ejector System") {
     cylV(x, y, z, 0.65, 3, COL.body);
     for (const dx of [-1, 1]) box(x + dx, y, z, 0.25, 5, 1.8, COL.steel);
@@ -208,12 +237,14 @@ function drawEquipment(it) {
   cur = null;
 }
 
-// pipes are cut into short pieces so each piece sorts correctly against the equipment around it
+// pipes are cut into short pieces so each piece sorts correctly against the equipment around it.
+// Flow direction is shown with arrowheads along the line (none when there is no flow); the ends are
+// flanged where they meet the equipment; runs along the ground sit on sleepers.
+const luminance = hex => { const n = parseInt(hex.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; };
 function drawPipe(p, i) {
   const pr = PRODUCTS[p.product], still = !p.speed, fill = still ? mix(pr.color, "#b8c0c6", 0.6) : pr.color;
-  const w = 2 * pr.r, dash = light(pr.color, 0.55);
-  const dur = p.speed ? (3.4 / (p.speed * 2.2)).toFixed(2) : 0;
-  let run = 0;
+  const w = 2 * pr.r, arrow = luminance(pr.color) < 0.5 ? "#ffffff" : "#0f1b2d";
+  let piece = 0;
   for (let k = 1; k < p.pts.length; k++) {
     const A = p.pts[k - 1], B = p.pts[k], len = Math.hypot(B.x - A.x, B.y - A.y, B.z - A.z);
     const pieces = Math.max(1, Math.ceil(len / 5));
@@ -223,16 +254,31 @@ function drawPipe(p, i) {
       const b = [A.x + (B.x - A.x) * t1, A.y + (B.y - A.y) * t1, A.z + (B.z - A.z) * t1];
       const s = P(...a), e = P(...b), d = `M${f(s[0])},${f(s[1])}L${f(e[0])},${f(e[1])}`;
       track([s, e]);
+      let head = "";
+      const sx = e[0] - s[0], sy = e[1] - s[1], sl = Math.hypot(sx, sy);
+      if (!still && piece++ % 2 === 0 && sl > 2.2) {            // an arrowhead on every other piece
+        const ux = sx / sl, uy = sy / sl, mx = (s[0] + e[0]) / 2, my = (s[1] + e[1]) / 2, hl = w * 0.95, hw = w * 0.36;
+        head = `<polygon points="${f(mx + ux * hl / 2)},${f(my + uy * hl / 2)} ${f(mx - ux * hl / 2 - uy * hw)},${f(my - uy * hl / 2 + ux * hw)} ${f(mx - ux * hl / 2 + uy * hw)},${f(my - uy * hl / 2 - ux * hw)}" fill="${arrow}"/>`;
+      }
       push(depthOf((a[0] + b[0]) / 2, (a[2] + b[2]) / 2) + 0.001,
-        `<path class="po" d="${d}" stroke-width="${f(w + 0.32)}"/><path d="${d}" stroke="${fill}" stroke-width="${f(w)}"/>` +
-        (still ? "" : `<path class="pd" d="${d}" stroke="${dash}" stroke-width="${f(w * 0.55)}" style="--o0:${f(run + len * t0)}px;--dur:${dur}s"/>`),
-        ` data-pipe="${i}"`);
+        `<path class="po" d="${d}" stroke-width="${f(w + 0.32)}"/><path d="${d}" stroke="${fill}" stroke-width="${f(w)}"/>${head}`, ` data-pipe="${i}"`);
     }
-    run += len;
+    // sleepers under runs along the ground
+    if (A.y < 1.6 && Math.abs(A.y - B.y) < 1e-6 && len > 3) {
+      const along = Math.abs(B.x - A.x) > Math.abs(B.z - A.z);
+      for (let t = 2; t < len - 1; t += 4) {
+        const sx2 = A.x + (B.x - A.x) * t / len, sz2 = A.z + (B.z - A.z) * t / len;
+        box(sx2, GROUND, sz2, along ? 0.35 : 1.1, Math.max(0.15, A.y - pr.r - GROUND), along ? 1.1 : 0.35, COL.concrete);
+      }
+    }
     if (k < p.pts.length - 1) {
       const [jx, jy] = P(B.x, B.y, B.z);
       push(depthOf(B.x, B.z) + 0.002, `<circle class="o" cx="${f(jx)}" cy="${f(jy)}" r="${f(pr.r)}" fill="${fill}"/>`, ` data-pipe="${i}"`);
     }
+  }
+  for (const E of [p.pts[0], p.pts.at(-1)]) {                // flanges at the nozzles
+    const [fx, fy] = P(E.x, E.y, E.z);
+    push(depthOf(E.x, E.z) + 0.003, `<circle class="o" cx="${f(fx)}" cy="${f(fy)}" r="${f(pr.r * 1.45)}" fill="${dark(fill, 0.25)}"/>`, ` data-pipe="${i}"`);
   }
 }
 
@@ -255,14 +301,21 @@ function draw() {
   ground.sort((p, q) => p.d - q.d || p.s - q.s);
   for (const it of site.items) if (it.depth >= 3) drawEquipment(it);
   site.pipes.forEach(drawPipe);
+  // pipe racks: bents (two posts and cross beams under the pipes and on top) joined by longitudinal beams
   for (const rk of site.racks) for (let rx = rk.x0; rx <= rk.x1; rx += 8) {
-    for (const z of [rk.z + 2.2, rk.z - 5.6]) box(rx, 0, z, 0.35, 11, 0.35, COL.steel);
-    box(rx, 10.5, rk.z - 1.7, 0.3, 0.3, 8.2, COL.steel);
+    for (const z of [rk.z + 2.2, rk.z - 5.6]) {
+      box(rx, 0, z, 0.35, 11, 0.35, COL.steel);
+      if (rx + 8 <= rk.x1) box(rx + 4, 10.5, z, 7.65, 0.3, 0.3, COL.steel);
+    }
+    for (const y of [6.3, 10.5]) box(rx, y, rk.z - 1.7, 0.3, 0.3, 8.2, COL.steel);
   }
   const cn = site.connector;                     // cross rack between the two rows
   if (cn) for (let rz = cn.z0 + 4; rz <= cn.z1 - 4; rz += 8) {
-    for (const x of [cn.x - 1, cn.x + 6]) box(x, 0, rz, 0.35, 11, 0.35, COL.steel);
-    box(cn.x + 2.5, 10.5, rz, 8.2, 0.3, 0.3, COL.steel);
+    for (const x of [cn.x - 1, cn.x + 6]) {
+      box(x, 0, rz, 0.35, 11, 0.35, COL.steel);
+      if (rz + 8 <= cn.z1 - 4) box(x, 10.5, rz + 4, 0.3, 0.3, 7.65, COL.steel);
+    }
+    for (const y of [6.3, 10.5]) box(cn.x + 2.5, y, rz, 8.2, 0.3, 0.3, COL.steel);
   }
   prims.sort((p, q) => p.d - q.d || p.s - q.s);
   // labels on top of everything
@@ -280,7 +333,6 @@ function draw() {
     it.children.forEach(add);
     itemBounds.set(it.node.id, b);
   }
-  svg.classList.toggle("moving", motion);
   mark("sel", ctx.selected); mark("hov", hovered);
   if (site) markPipes();
 }
@@ -417,6 +469,7 @@ function applyValues() {
   updatePipes();
   draw();
   $("asof").textContent = asOfText();
+  const pe = $("pierr"); pe.hidden = !U.state.piError || ctx.live; pe.textContent = U.state.piError ? `Why not live: ${U.state.piError}` : "";
   renderTreeDots(); summary();
   if (ctx.selected) renderInfo(ctx.selected, select);
 }
@@ -428,6 +481,7 @@ function openSite(code, elementId) {
   site = ctx.site = layoutSite(code, sizeOf);
   ctx.selected = null;
   $("site").value = code;
+  $("mapBtn").href = `topo.html#${code}`;
   initialValues(code);
   updatePipes(); draw();
   home(true);
@@ -474,20 +528,9 @@ function setPane(open) {
   if (open) $("treeBody").querySelector(".nm.on, .nm")?.focus({ preventScroll: true });
 }
 
-// Motion: flowing dashes in the pipes (CSS animation, a few frames per second)
-let motion = false;
-try { motion = localStorage.getItem("cp.plant.motion2d") === "on"; } catch (_) { /* no storage */ }
-function setMotion(on) {
-  motion = on;
-  svg.classList.toggle("moving", on);
-  $("motion").setAttribute("aria-pressed", String(on));
-  try { localStorage.setItem("cp.plant.motion2d", on ? "on" : "off"); } catch (_) { /* no storage */ }
-}
-
 async function main() {
   try { await U.load(); } catch (e) { $("err").hidden = false; $("err").textContent = `Could not load data: ${e.message}`; return; }
   const fromHash = wirePage({ openSite, select, home: () => home(false) });
-  $("motion").addEventListener("click", () => setMotion(!motion));
   for (const b of document.querySelectorAll("[data-open]")) b.addEventListener("click", () => setPane(true));
   $("paneClose").addEventListener("click", () => setPane(false));
   $("paneBtn").addEventListener("click", () => setPane(!document.body.classList.contains("pane-open")));
@@ -496,7 +539,6 @@ async function main() {
   let paneOpen = null;
   try { paneOpen = localStorage.getItem("cp.plant.pane"); } catch (_) { /* no storage */ }
   if (window.innerWidth > 700 && paneOpen !== "closed") document.body.classList.add("pane-open");
-  setMotion(motion);
   let t;
   window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => setVB({ ...vb, w: svg.clientWidth / lastScale, h: svg.clientHeight / lastScale }, { now: true }), 100); });
   fromHash();
