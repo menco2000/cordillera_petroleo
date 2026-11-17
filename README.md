@@ -16,6 +16,38 @@ physical model names the refinery units.
 
 Model review page: `docs/af-model.html` (open in a browser).
 
+## What it looks like
+
+**Operations map** (`dashboard/topo.html`). All 8 sites on a contour map, oil production drawn as
+colored bands, sites that need attention flagged in orange:
+
+![Operations map, all sites](docs/img/map-overview.jpg)
+
+Click a site to zoom to its wellfield, with each well's oil rate and status (here a well in workover):
+
+![Operations map, one site](docs/img/map-site.jpg)
+
+**Plant view** (`dashboard/plant.html`). An isometric drawing of the site built from the AF hierarchy,
+with product flowing along the pipes from the wells to the product tanks:
+
+![Plant view of a site](docs/img/plant-site.jpg)
+
+Select any element in the drawing or in the AF tree to see its live PI values:
+
+![Plant view, production separator selected](docs/img/plant-separator.jpg)
+
+![Plant view, hydrotreating reactor selected](docs/img/plant-reactor.jpg)
+
+**PI Vision.** Company overview display reading the same AF database: totals, 7-day trend,
+production and refinery throughput by site:
+
+![PI Vision company overview](docs/img/pivision-overview.png)
+
+**PI System Explorer.** The imported AF database, ISA-95 hierarchy on the left, attributes grouped
+by category (configuration, metadata, nameplate, process, status) on the right:
+
+![AF database in PI System Explorer](docs/img/af-pse.png)
+
 ## Repository layout
 
 ```
