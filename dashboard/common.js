@@ -186,8 +186,11 @@
     return tpl ? tpl.replace("{asset}", encodeURIComponent(asset)) : pv.home || null;
   }
 
+  // animation on or off: see `motion` in config.js
+  const reduceMotion = () => CFG.motion === "off" || (CFG.motion === "auto" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
   window.CP_UI = {
     M, SITES, CFG, state, el, sv, esc, fmt, LEVEL, WELL_LEVEL, UNIT_LEVEL, UNIT_TEXT, icon, pill,
-    siteStatus, siteFigures, totals, load, autoRefresh, showTip, asOfText, freshness, when, ago, briefSite, briefWell, briefRefinery, piVisionUrl,
+    siteStatus, siteFigures, totals, load, autoRefresh, showTip, asOfText, freshness, when, ago, briefSite, briefWell, briefRefinery, piVisionUrl, reduceMotion,
   };
 })();

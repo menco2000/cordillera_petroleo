@@ -1,12 +1,12 @@
 // Plant view: one site's AF hierarchy (areas -> units -> equipment) as a flat isometric SVG
 // illustration, with the product flows from the wells to the product tanks driven by live PI values.
-// No WebGL, so it stays light on machines without a graphics card: the browser only repaints when you
-// pan, zoom, hover or new values arrive. Layout, flows, values and panels live in plant-core.js.
+// No WebGL, so it stays light on machines without a graphics card. The only continuous repaint is the
+// motion (flow streaks, pump jacks, fans, vapour), which the Motion button and a hidden tab stop. Layout, flows, values and panels live in plant-core.js.
 import {
   $, U, CFG, fmt, PRODUCTS, TANK_PRODUCT, LEVEL_HEX, GROUND, layoutSite, ctx, statusOf, statusAttr, STATUS_LEVEL,
   updatePipes, tankFraction, fetchValues, initialValues, renderInfo, renderTreeDots, showSelection, freeArea,
   pipeTip, placeTip, asOfText, wirePage,
-} from "./plant-core.js?v=2026.11.03b";
+} from "./plant-core.js?v=2026.11.10b";
 
 const svg = $("scene");
 // industrial look: galvanised equipment, yellow structural steel, concrete pads (line colours in plant.html)
@@ -66,11 +66,52 @@ function box(cx, y0, cz, w, h, d, color, cls = "", { top: withTop = true } = {})
 const band = (cx, y0, cz, w, h, d, color) => box(cx, y0, cz, w, h, d, color, "", { top: false });   // painted stripe round a box
 
 // a flat rectangle on the front (+z) face of a box
-function facePatch(cx, cz, halfW, halfD, y0, y1, halfLen, color) {
+function facePatch(cx, cz, halfW, halfD, y0, y1, halfLen, color, cls = "") {
   const pz = cz + halfD + 0.02;
   const q = [P(cx - halfLen, y0, pz), P(cx + halfLen, y0, pz), P(cx + halfLen, y1, pz), P(cx - halfLen, y1, pz)];
-  push(depthOf(cx, cz) + 0.01, `<polygon points="${pts(q)}" fill="${color}"/>`);
+  push(depthOf(cx, cz) + 0.01, `<polygon${cls ? ` class="${cls}"` : ""} points="${pts(q)}" fill="${color}"/>`);
 }
+
+// ------------------------------------------------------------------ motion
+// Flow streaks on the pipes, pump jacks nodding, cooling tower fans turning, vapour rising. Each moving
+// element carries its motion in data-m (kind) and data-a (numbers); a ticker sets them about 15 times a
+// second (MOTION_FPS), so a machine without a graphics card repaints a quarter as often as it would with
+// free-running animation. The Motion button, a hidden tab and `motion` in config.js stop it.
+// rock a group of primitives (already pushed, from index i0) round a pivot in screen space
+function rock(i0, pivot, deg, period) {
+  const parts = prims.splice(i0), [px, py] = pivot.map(f);
+  push(parts[0].d, `<g data-m="rock" data-a="${px} ${py} ${deg} ${f(period)}">${parts.map(p => p.t).join("")}</g>`);
+}
+// fan blades turning on the top of a fan stack (a circle of radius r in the ground plane)
+function fan(cx, y, cz, r, period) {
+  const [x, yy] = P(cx, y, cz), b = `<ellipse rx="${f(r * 0.92)}" ry="${f(r * 0.17)}" fill="#5b636b"/>`;
+  push(depthOf(cx, cz) + 0.01, `<g transform="translate(${f(x)} ${f(yy)}) scale(${f(RX)} ${f(RY)})"><circle r="${f(r)}" fill="${COL.dark}"/>` +
+    `<g${period ? ` data-m="fan" data-a="${f(period)}"` : ""}>${b}<g transform="rotate(60)">${b}</g><g transform="rotate(120)">${b}</g><circle r="${f(r * 0.18)}" fill="${COL.body2}"/></g></g>`);
+}
+// puffs of vapour (or hot gas) rising from a point and fading out
+function puffs(cx, y, cz, size, rise, period, color = "#ffffff") {
+  const [x, yy] = P(cx, y, cz);
+  let s = "";
+  for (let k = 0; k < 3; k++) s += `<circle cx="${f(x)}" cy="${f(yy)}" r="0" fill="${color}" data-m="puff" data-a="${f(yy)} ${f(rise)} ${f(size)} ${f(period)} ${k / 3}"/>`;
+  push(depthOf(cx, cz) + 0.05, `<g class="puff" pointer-events="none">${s}</g>`);
+}
+// one step of every moving element at time t (seconds)
+const MOVE = {
+  streak: (e, [o0, speed], t) => e.setAttribute("stroke-dashoffset", f(o0 - (t * speed) % FLOW_PERIOD)),
+  rock: (e, [px, py, deg, per], t) => e.setAttribute("transform", `rotate(${f(deg * Math.sin(2 * Math.PI * t / per))} ${px} ${py})`),
+  fan: (e, [per], t) => e.setAttribute("transform", `rotate(${f(360 * (t / per % 1))})`),
+  puff: (e, [cy, rise, size, per, phase], t) => {
+    const u = (t / per + phase) % 1;
+    e.setAttribute("cy", f(cy - rise * u)); e.setAttribute("r", f(size * (0.6 + u)));
+    e.setAttribute("opacity", f(u < 0.3 ? u / 0.3 * 0.45 : 0.45 * (1 - u) / 0.7));
+  },
+};
+let moving = [];
+function collectMotion() {
+  moving = [...svg.querySelectorAll("[data-m]")].map(e => ({ e, go: MOVE[e.dataset.m], a: e.dataset.a.split(" ").map(Number) }));
+}
+function step() { const t = performance.now() / 1000; for (const m of moving) m.go(m.e, m.a, t); }
+const running = it => ["good", "warning"].includes(statusOf(it).level);
 
 // vertical cylinder; a circle of radius r in the ground plane shows as an ellipse rx × ry
 const RX = Math.SQRT2 * C30, RY = Math.SQRT2 * S30;
@@ -174,7 +215,10 @@ function drawEquipment(it) {
     band(x, y + 0.95, z, 4.45, 0.5, 3.65, acc);
     box(x, y + 6.1, z, 2.4, 1.4, 2.2, COL.body);
     cylV(x, y + 7.5, z, 0.5, 7, COL.body2);
-    if (+v[`${n.tag}.QFG`] > 1) facePatch(x, z, 2.2, 1.8, y + 2.1, y + 2.6, 1.5, "#ff9a3c");    // firebox glow
+    if (+v[`${n.tag}.QFG`] > 1) {
+      facePatch(x, z, 2.2, 1.8, y + 2.1, y + 2.6, 1.5, "#ff9a3c", "glow");                    // firebox glow
+      puffs(x, y + 14.6, z, 0.45, 4, 3.2, "#d9dde1");                                          // hot gas from the stack
+    }
   } else if (t === "Pump") {
     box(x, y, z, 3.8, 0.3, 1.9, COL.concrete);                 // plinth
     box(x, y + 0.3, z, 3.4, 0.3, 1.5, COL.dark);
@@ -211,7 +255,12 @@ function drawEquipment(it) {
   } else if (t === "Cooling Tower") {
     box(x, y, z, 10, 0.6, 4.6, COL.water);
     box(x, y + 0.6, z, 9.4, 4, 4, COL.body);
-    for (const dx of [-3.1, 0, 3.1]) cylV(x + dx, y + 4.6, z, 1.35, 1.2, acc);
+    const on = running(it);
+    for (const dx of [-3.1, 0, 3.1]) {
+      cylV(x + dx, y + 4.6, z, 1.35, 1.2, acc);
+      fan(x + dx, y + 5.8, z, 1.15, on ? 1.4 : 0);
+      if (on) puffs(x + dx, y + 6, z, 0.7, 4.5, 4.5);
+    }
   } else if (t === "Pipeline") {
     for (let dx = -7; dx <= 7; dx += 2.5) box(x + dx, y, z, 0.3, 0.5, 1.2, COL.dark);
     cylH(x, y + 0.9, z, 0.4, 16, "x", COL.body2);
@@ -225,8 +274,10 @@ function drawEquipment(it) {
       box(bx + 1.2, y, z, 5.5, 0.35, 1.3, COL.dark);
       box(bx - 1.7, y + 0.35, z, 1.3, 0.9, 1.1, COL.body2);
       box(bx + 1.6, y + 0.35, z, 0.25, 3.4, 1.0, COL.dark);
-      box(bx + 2.1, y + 3.75, z, 5.2, 0.38, 0.38, acc);
-      box(bx + 4.75, y + 2.9, z, 0.5, 1.3, 0.5, COL.body2);
+      const i0 = prims.length, spm = +v[`${n.tag}.SPM`];
+      box(bx + 2.1, y + 3.75, z, 5.2, 0.38, 0.38, acc);             // walking beam
+      box(bx + 4.75, y + 2.9, z, 0.5, 1.3, 0.5, COL.body2);         // horsehead
+      if (running(it) && spm > 0.5) rock(i0, P(bx + 1.6, y + 3.95, z), 9, 60 / spm);
     } else if (lift === "ESP") box(x - 2.2, y + 0.25, z, 0.9, 1.8, 0.5, COL.body);
     else if (lift === "PCP") box(x + 0.4, y + 2.2, z, 1.2, 0.7, 0.7, acc);
     else if (lift === "Gas Lift") box(x - 2.2, y + 0.25, z, 0.7, 0.9, 0.6, COL.body);
@@ -240,11 +291,15 @@ function drawEquipment(it) {
 // pipes are cut into short pieces so each piece sorts correctly against the equipment around it.
 // Flow direction is shown with arrowheads along the line (none when there is no flow); the ends are
 // flanged where they meet the equipment; runs along the ground sit on sleepers.
+const FLOW_PERIOD = 3.4;                 // dash + gap of the flow streaks (stroke-dasharray in plant.html)
 const luminance = hex => { const n = parseInt(hex.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; };
 function drawPipe(p, i) {
   const pr = PRODUCTS[p.product], still = !p.speed, fill = still ? mix(pr.color, "#b8c0c6", 0.6) : pr.color;
   const w = 2 * pr.r, arrow = luminance(pr.color) < 0.5 ? "#ffffff" : "#0f1b2d";
-  let piece = 0;
+  // flow streaks: one dash pattern along the whole pipe (each piece starts at the phase where the
+  // previous one ended), moving towards the outlet at a speed that follows the flow
+  const speed = 2.4 * p.speed;            // drawing units per second
+  let piece = 0, run = 0;
   for (let k = 1; k < p.pts.length; k++) {
     const A = p.pts[k - 1], B = p.pts[k], len = Math.hypot(B.x - A.x, B.y - A.y, B.z - A.z);
     const pieces = Math.max(1, Math.ceil(len / 5));
@@ -260,8 +315,11 @@ function drawPipe(p, i) {
         const ux = sx / sl, uy = sy / sl, mx = (s[0] + e[0]) / 2, my = (s[1] + e[1]) / 2, hl = w * 0.95, hw = w * 0.36;
         head = `<polygon points="${f(mx + ux * hl / 2)},${f(my + uy * hl / 2)} ${f(mx - ux * hl / 2 - uy * hw)},${f(my - uy * hl / 2 + ux * hw)} ${f(mx - ux * hl / 2 + uy * hw)},${f(my - uy * hl / 2 - ux * hw)}" fill="${arrow}"/>`;
       }
+      const o0 = run % FLOW_PERIOD;
+      const streak = still ? "" : `<path class="pd" d="${d}" stroke="${arrow}" stroke-width="${f(w * 0.45)}" stroke-dashoffset="${f(o0)}" data-m="streak" data-a="${f(o0)} ${f(speed)}"/>`;
+      run += sl;
       push(depthOf((a[0] + b[0]) / 2, (a[2] + b[2]) / 2) + 0.001,
-        `<path class="po" d="${d}" stroke-width="${f(w + 0.32)}"/><path d="${d}" stroke="${fill}" stroke-width="${f(w)}"/>${head}`, ` data-pipe="${i}"`);
+        `<path class="po" d="${d}" stroke-width="${f(w + 0.32)}"/><path d="${d}" stroke="${fill}" stroke-width="${f(w)}"/>${streak}${head}`, ` data-pipe="${i}"`);
     }
     // sleepers under runs along the ground
     if (A.y < 1.6 && Math.abs(A.y - B.y) < 1e-6 && len > 3) {
@@ -335,6 +393,7 @@ function draw() {
   }
   mark("sel", ctx.selected); mark("hov", hovered);
   if (site) markPipes();
+  applyMotion();
 }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -365,7 +424,7 @@ function fitTo(b, fill, { instant = false } = {}) {
   const bw = Math.max(1, b[2] - b[0]), bh = Math.max(1, b[3] - b[1]);
   const s = Math.min((right - left) / bw, (bottom - top) / bh) * fill;
   const target = { w: W / s, h: H / s, x: (b[0] + b[2]) / 2 - ((left + right) / 2) / s, y: (b[1] + b[3]) / 2 - ((top + bottom) / 2) / s };
-  if (instant || window.matchMedia("(prefers-reduced-motion: reduce)").matches) { cancelAnimationFrame(anim); setVB(target, { now: true }); return; }
+  if (instant || U.reduceMotion()) { cancelAnimationFrame(anim); setVB(target, { now: true }); return; }
   const from = { ...vb }, t0 = performance.now();
   cancelAnimationFrame(anim);
   const step = now => {
@@ -520,6 +579,26 @@ function summary() {
     problems.length ? Object.assign(document.createElement("b"), { textContent: `${problems.length} ${problems.length > 1 ? "items need" : "item needs"} attention` }) : "all equipment normal");
 }
 
+// Motion button: on unless switched off last time or the system asks for reduced motion
+let motion = !U.reduceMotion();
+if (U.CFG.motion !== "off") try { const m = localStorage.getItem("cp.plant.motion"); if (m) motion = m === "on"; } catch (_) { /* no storage */ }
+const MOTION_FPS = 15;
+let ticker = null;
+function applyMotion() {
+  const on = motion && !document.hidden;
+  svg.classList.toggle("moving", on);
+  collectMotion();
+  clearInterval(ticker); ticker = null;
+  if (on) { step(); ticker = setInterval(step, 1000 / MOTION_FPS); }
+  const b = $("motion");
+  if (b) { b.setAttribute("aria-pressed", String(motion)); b.title = motion ? "Stop the animation" : "Animate flows and equipment"; }
+}
+function setMotion(on) {
+  motion = on;
+  try { localStorage.setItem("cp.plant.motion", on ? "on" : "off"); } catch (_) { /* no storage */ }
+  applyMotion();
+}
+
 // left pane: a rail when collapsed, expanded on demand; on phones a drawer
 function setPane(open) {
   const keep = lastScale;
@@ -534,6 +613,8 @@ async function main() {
   const fromHash = wirePage({ openSite, select, home: () => home(false) });
   for (const b of document.querySelectorAll("[data-open]")) b.addEventListener("click", () => setPane(true));
   $("paneClose").addEventListener("click", () => setPane(false));
+  $("motion").addEventListener("click", () => setMotion(!motion));
+  document.addEventListener("visibilitychange", applyMotion);
   $("paneBtn").addEventListener("click", () => setPane(!document.body.classList.contains("pane-open")));
   // double-click on empty ground: back to the whole site
   svg.addEventListener("dblclick", e => { if (!e.target.closest("[data-id], [data-pipe]")) { select(null, { fly: false }); home(false); } });

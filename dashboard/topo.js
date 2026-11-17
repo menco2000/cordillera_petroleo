@@ -6,7 +6,7 @@
   const U = window.CP_UI, { M, SITES, CFG, state, el, sv, fmt, LEVEL, WELL_LEVEL } = U;
   const R = window.CP_RELIEF;
   const $ = id => document.getElementById(id);
-  const stage = $("stage"), canvas = $("base"), over = $("over"), labels = $("labels");
+  const stage = $("stage"), canvas = $("base"), heat = $("heat"), layer = $("layer"), over = $("over"), labels = $("labels");
 
   // Signal sequential scale seq-1 … seq-5, low to high
   const BANDS = ["#e8effd", "#b7cbf7", "#7a9ff0", "#3a6fe3", "#0a2f8a"];
@@ -101,21 +101,116 @@
     return img;
   }
 
+  const dpr = () => Math.min(2, window.devicePixelRatio || 1);
+  function baseContext() {
+    const k = dpr(), w = Math.round(W() * k), h = Math.round(H() * k);
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    ctx.globalAlpha = 1; ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W(), H());
+    ctx.imageSmoothingQuality = "high";
+    return ctx;
+  }
+  // terrain on the base canvas, contour bands on the heat canvas above it
   async function paint() {
     const base = await image(rel.img);
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    canvas.width = Math.round(W() * dpr); canvas.height = Math.round(H() * dpr);
-    const ctx = canvas.getContext("2d");
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, W(), H());
-    ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(base, frame.ox, frame.oy, rel.w * frame.s, rel.h * frame.s);
-    const heat = heatLayer(canvas.width, canvas.height, 1 / dpr);
-    const tmp = document.createElement("canvas"); tmp.width = heat.width; tmp.height = heat.height;
-    tmp.getContext("2d").putImageData(heat, 0, 0);
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(tmp, 0, 0);
+    baseContext().drawImage(base, frame.ox, frame.oy, rel.w * frame.s, rel.h * frame.s);
+    shown = toCont(rel, frame);
+    heat.width = canvas.width; heat.height = canvas.height;
+    heat.getContext("2d").putImageData(heatLayer(heat.width, heat.height, 1 / dpr()), 0, 0);
+  }
+
+  // ---------------------------------------------------------------- flying between views
+  // Opening or closing a site zooms the map smoothly (van Wijk & Nuij's smooth zoom-and-pan path, as
+  // in d3.interpolateZoom). Frames are kept on the continent image; a site's own, sharper terrain fades
+  // in over it as the zoom gets close. The contour bands and marks ride along with the map for a moment
+  // while they fade out; the new ones are drawn when the map lands.
+  const CONT = R.continent, factor = r => 2 ** (r.z - CONT.z);
+  let shown = null, flight = 0;            // the frame on screen (continent pixels); id of the running flight
+  function toCont(r, fr) {
+    if (r === CONT) return { ...fr };
+    const k = factor(r);
+    return { s: fr.s * k, ox: fr.ox + (k * CONT.x0 - r.x0) * fr.s, oy: fr.oy + (k * CONT.y0 - r.y0) * fr.s };
+  }
+  function frameFor(code) {
+    const keep = [rel, frame];
+    rel = code ? R.sites[code] : CONT;
+    if (code) fitSite(code); else fitContinent();
+    const out = toCont(rel, frame);
+    [rel, frame] = keep;
+    return out;
+  }
+  // a frame as [centre x, centre y, width] in continent pixels, and back
+  const view = fr => [(W() / 2 - fr.ox) / fr.s, (H() / 2 - fr.oy) / fr.s, W() / fr.s];
+  const unview = ([ux, uy, w]) => { const s = W() / w; return { s, ox: W() / 2 - ux * s, oy: H() / 2 - uy * s }; };
+  function zoomPath([ux0, uy0, w0], [ux1, uy1, w1], rho = 1.4) {
+    const dx = ux1 - ux0, dy = uy1 - uy0, d2 = dx * dx + dy * dy, rho2 = rho * rho;
+    let S, at;
+    if (d2 < 1e-9) { S = Math.log(w1 / w0) / rho; at = t => [ux0 + t * dx, uy0 + t * dy, w0 * Math.exp(rho * t * S)]; }
+    else {
+      const d1 = Math.sqrt(d2), b0 = (w1 * w1 - w0 * w0 + rho2 * rho2 * d2) / (2 * w0 * rho2 * d1), b1 = (w1 * w1 - w0 * w0 - rho2 * rho2 * d2) / (2 * w1 * rho2 * d1);
+      const r0 = Math.log(Math.sqrt(b0 * b0 + 1) - b0), r1 = Math.log(Math.sqrt(b1 * b1 + 1) - b1), c0 = Math.cosh(r0);
+      S = (r1 - r0) / rho;
+      at = t => { const s = t * S, u = w0 / (rho2 * d1) * (c0 * Math.tanh(rho * s + r0) - Math.sinh(r0)); return [ux0 + u * dx, uy0 + u * dy, w0 * c0 / Math.cosh(rho * s + r0)]; };
+    }
+    at.ms = Math.max(650, Math.min(1500, Math.abs(S) * 1000 * rho / Math.SQRT2 * 0.5));
+    return at;
+  }
+  // a copy of a site's terrain whose edges fade out, so its square doesn't show while it fades in
+  const feathered = new Map();
+  function feather(img) {
+    if (feathered.has(img)) return feathered.get(img);
+    const w = img.naturalWidth, h = img.naturalHeight, c = document.createElement("canvas"), x = c.getContext("2d");
+    c.width = w; c.height = h;
+    x.drawImage(img, 0, 0);
+    x.globalCompositeOperation = "destination-in";
+    for (const [len, g] of [[w, x.createLinearGradient(0, 0, w, 0)], [h, x.createLinearGradient(0, 0, 0, h)]]) {
+      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(0.18, "#000"); g.addColorStop(0.82, "#000"); g.addColorStop(1, "rgba(0,0,0,0)");
+      x.fillStyle = g; x.fillRect(0, 0, w, h);
+    }
+    feathered.set(img, c);
+    return c;
+  }
+  const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const easeInOut = t => t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+
+  // resolves true when the map has landed on `to`, false when another flight took over
+  async function fly(from, to) {
+    const my = ++flight, f0 = shown || frameFor(from), f1 = frameFor(to);
+    const cont = await image(CONT.img);
+    // the sites' own terrain, each with its fit scale: it shows once the zoom is within ~8x of it
+    const sites = [];
+    for (const code of new Set([from, to].filter(Boolean))) {
+      const r = R.sites[code];
+      const img = await Promise.race([image(r.img), new Promise(ok => setTimeout(ok, 1200))]).catch(() => null);
+      if (img) sites.push({ r, img, soft: feather(img), fit: frameFor(code).s });
+    }
+    if (my !== flight) return false;
+    const path = zoomPath(view(f0), view(f1)), t0 = performance.now();
+    layer.classList.add("gone");
+    return new Promise(done => {
+      const step = now => {
+        if (my !== flight) return done(false);
+        const p = Math.min(1, (now - t0) / path.ms), fc = p < 1 ? unview(path(easeInOut(p))) : f1;
+        const ctx = baseContext();
+        // the continent image is coarse: it fades towards the paper colour once it is blown up
+        ctx.globalAlpha = 1 - 0.85 * smooth(0.5, 2.5, Math.log2(fc.s));
+        ctx.drawImage(cont, fc.ox, fc.oy, CONT.w * fc.s, CONT.h * fc.s);
+        for (const { r, img, soft, fit } of sites) {
+          const z = Math.log2(fc.s / fit), k = factor(r);
+          const box = [fc.ox + (r.x0 / k - CONT.x0) * fc.s, fc.oy + (r.y0 / k - CONT.y0) * fc.s, r.w / k * fc.s, r.h / k * fc.s];
+          // soft-edged terrain from 16x out, the full square for the last step (it fills the map there)
+          ctx.globalAlpha = smooth(-4, -1.5, z); if (ctx.globalAlpha) ctx.drawImage(soft, ...box);
+          ctx.globalAlpha = smooth(-1.2, -0.2, z); if (ctx.globalAlpha) ctx.drawImage(img, ...box);
+        }
+        ctx.globalAlpha = 1;
+        const z = fc.s / f0.s;
+        layer.style.transform = `translate(${fc.ox - f0.ox * z}px, ${fc.oy - f0.oy * z}px) scale(${z})`;
+        shown = fc;
+        if (p < 1) requestAnimationFrame(step); else done(true);
+      };
+      requestAnimationFrame(step);
+    });
   }
 
   // ---------------------------------------------------------------- labels
@@ -299,8 +394,9 @@
   }
 
   // ---------------------------------------------------------------- views
-  let busy = 0;
+  let busy = 0, flying = false;
   async function render() {
+    if (flying) return;                    // the flight renders when it lands
     const my = ++busy;
     rel = state.view ? R.sites[state.view] : R.continent;
     renderChrome();
@@ -308,17 +404,29 @@
     try { await paint(); } catch (e) { $("asof").textContent = `Could not draw the map: ${e.message}`; }
     if (my !== busy) return;
     drawMarks();
+    layer.style.transform = ""; layer.classList.remove("gone");
   }
 
   async function switchTo(code) {
+    const from = state.view;
     state.view = code; tip.hidden = true;
     try { history.replaceState(null, "", code ? `#${code}` : location.pathname + location.search); } catch (_) { /* sandboxed */ }
-    const map = $("map"), reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!reduce) { map.classList.add("out"); await new Promise(r => setTimeout(r, 200)); }
-    if (code) image(R.sites[code].img).catch(() => {});
-    await render();
-    map.classList.remove("out");
     if (small()) document.body.classList.remove("pane-open");
+    renderChrome();
+    const map = $("map"), reduce = U.reduceMotion();
+    if (reduce || from === code) {         // reduced motion: a short cross-fade instead of the zoom
+      if (code) image(R.sites[code].img).catch(() => {});
+      if (!reduce) { map.classList.add("out"); await new Promise(r => setTimeout(r, 200)); }
+      await render();
+      map.classList.remove("out");
+      return;
+    }
+    flying = true;
+    let landed = true;
+    try { landed = await fly(from, code); } catch (_) { /* image failed: just draw the new view */ }
+    if (!landed) return;                   // a newer flight is running and will render
+    flying = false;
+    await render();
   }
   const openSite = code => switchTo(code);
   const closeSite = () => switchTo(null);

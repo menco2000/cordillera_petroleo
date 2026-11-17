@@ -112,7 +112,10 @@ details.sec[open] summary::after { content: "▾"; }
 body.pane-open #stage { left: var(--pane-w); }
 #map { position: absolute; inset: 0; transition: opacity .2s ease; }
 #map.out { opacity: 0; }
-#base { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#base, #heat { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* bands and marks: they ride along with a zoom while they fade out, and fade in when it lands */
+#layer { position: absolute; inset: 0; transform-origin: 0 0; transition: opacity .35s ease; }
+#layer.gone { opacity: 0; transition-duration: .22s; pointer-events: none; }
 #over { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 #over .lead { stroke: var(--axis); stroke-width: 1; fill: none; }
 #over .lead.hl { stroke: var(--highlight); stroke-width: 1.5; }
@@ -198,19 +201,22 @@ svg.ic { width: 12px; height: 12px; flex: none; }
 <main id="stage">
   <div id="map">
     <canvas id="base" role="img" aria-label="Contour map with oil production drawn as contour bands"></canvas>
-    <svg id="over"></svg>
-    <div id="labels"></div>
+    <div id="layer">
+      <canvas id="heat" aria-hidden="true"></canvas>
+      <svg id="over"></svg>
+      <div id="labels"></div>
+    </div>
   </div>
 </main>
 <div id="tip" hidden></div>
 
 <!-- ?v= is the release: bump it (here, in the other page and in plant.js) when the files change, so browsers never mix old and new files -->
-<script src="config.js?v=2026.11.03b"></script>
-<script src="data/model.js?v=2026.11.03b"></script>
-<script src="data/demo.js?v=2026.11.03b"></script>
-<script src="data/relief.js?v=2026.11.03b"></script>
-<script src="source.js?v=2026.11.03b"></script>
-<script src="common.js?v=2026.11.03b"></script>
-<script src="topo.js?v=2026.11.03b"></script>
+<script src="config.js?v=2026.11.10b"></script>
+<script src="data/model.js?v=2026.11.10b"></script>
+<script src="data/demo.js?v=2026.11.10b"></script>
+<script src="data/relief.js?v=2026.11.10b"></script>
+<script src="source.js?v=2026.11.10b"></script>
+<script src="common.js?v=2026.11.10b"></script>
+<script src="topo.js?v=2026.11.10b"></script>
 </body>
 </html>

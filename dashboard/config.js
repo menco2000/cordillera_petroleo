@@ -10,6 +10,10 @@ window.CP_CONFIG = {
     timeoutSeconds: 15,
   },
   refreshSeconds: 60,
+  // Animation (the map's zoom into a site, the plant's flows and equipment):
+  // "on": always; "auto": off when the system asks for reduced motion (Windows Server does by default,
+  // because "Show animations in Windows" is off there); "off": never
+  motion: "on",
   piVision: {
     // Where "Open in PI Vision" goes. {asset} is replaced with the AF path of the site (or the company).
     // Build an asset-relative display in PI Vision and paste its URL here, e.g.

@@ -66,9 +66,13 @@ with its pipe rack behind it and a cross rack joining them.
   most six groups for the pipes, IBM Plex Sans with tabular figures, and a source line under the data.
 - **Data:** the element tree and PI attributes come from `data/plant.js` (generated from the AF model),
   values from PI Web API (all PI Point attributes of the site, refreshed every 60 s) or the demo snapshot.
-- **CPU:** no WebGL and no animation, so it runs fine on a server VM without a graphics card: it only
-  repaints when you pan, zoom, hover or new values arrive, and while you drag it moves the drawing
-  already on screen.
+- **Motion:** product streaks flow along the pipes towards their outlet at a speed that follows the PI
+  flow (none when there is no flow), rod pumps nod at their strokes per minute, cooling tower fans turn
+  and vapour rises while running, and the firebox glows. **Motion** in the top bar stops it (remembered
+  per browser); it also stops while the tab is hidden.
+- **CPU:** no WebGL, so it runs on a server VM without a graphics card. The motion is stepped about 15
+  times a second instead of every frame; with it off, the page only repaints when you pan, zoom, hover
+  or new values arrive, and while you drag it moves the drawing already on screen.
 - Open it from the Topo site view (**View the plant**). It uses ES modules, so serve the folder over
   HTTP (IIS or `python -m http.server`); opening the file directly from disk won't work.
 
